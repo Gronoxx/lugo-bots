@@ -1,0 +1,13 @@
+bot,adversario,lado,rep,gols_pro,gols_contra
+mybot:v3,the-dummies-go,home,1,3,0
+mybot:v3,the-dummies-go,away,1,4,0
+mybot:v3,the-dummies-go,home,2,0,0
+mybot:v3,the-dummies-go,away,2,4,0
+mybot:v3,the-dummies-go,home,3,1,0
+mybot:v3,the-dummies-go,away,3,2,0
+mybot:v3,rival_p1,home,1,12,0
+mybot:v3,rival_p1,away,1,10,0
+mybot:v3,rival_p1,home,2,8,1
+mybot:v3,rival_p1,away,2,8,0
+mybot:v3,rival_p1,home,3,9,2
+mybot:v3,rival_p1,away,3,11,1

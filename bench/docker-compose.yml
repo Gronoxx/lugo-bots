@@ -1,0 +1,241 @@
+name: lugo-bench
+
+services:
+  server:
+    image: lugobots/server:latest
+    command: >
+      play
+      --dev-mode
+      --timer-mode=rush
+      --record-path=/recordings/dummies_vs_dummies.json
+      --headless
+      --quiet
+    ports:
+      - "5000:5000"
+      - "8080:8080"
+    volumes:
+      - ./recordings:/recordings
+    networks: [lugo]
+
+  home_01:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=1
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_02:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=2
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_03:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=3
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_04:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=4
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_05:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=5
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_06:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=6
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_07:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=7
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_08:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=8
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_09:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=9
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_10:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=10
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  home_11:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=home
+      - BOT_NUMBER=11
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_01:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=1
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_02:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=2
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_03:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=3
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_04:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=4
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_05:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=5
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_06:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=6
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_07:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=7
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_08:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=8
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_09:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=9
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_10:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=10
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+  away_11:
+    image: lugobots/the-dummies-go:latest
+    depends_on: [server]
+    environment:
+      - BOT_TEAM=away
+      - BOT_NUMBER=11
+      - BOT_GRPC_URL=server:5000
+    restart: on-failure
+    networks: [lugo]
+
+networks:
+  lugo:

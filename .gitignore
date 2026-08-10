@@ -1,0 +1,27 @@
+# ambiente Python — recriado por bench/setup_linux.sh
+.venv/
+__pycache__/
+*.pyc
+
+# replays: ~18 MB cada, gerados por partida. Não versionar.
+bench/recordings/
+*.json.gz
+
+# repos oficiais clonados — recriáveis, pesados
+upstream/
+
+# artefatos de execução
+bench/dc_*.yml
+bench/.rival_build/
+*.log
+nohup.out
+
+# binários extraídos para inspeção
+lugo_server_bin
+
+# vídeos oficiais baixados para análise (30-42 MB cada)
+videos/
+
+# macOS
+.DS_Store
+Lugo.zip
