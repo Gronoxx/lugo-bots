@@ -28,13 +28,19 @@ services:
       --timer-mode={timer_mode}
       --record-path=/recordings/{match_id}.json
       {extra}
-    ports:
-      - "5000:5000"
-      - "8080:8080"
-    volumes:
+{ports}    volumes:
       - ./recordings:/recordings
     networks: [lugo]
 """
+
+# Publicar as portas do host (5000/8080) IMPEDE partidas em paralelo: duas
+# partidas colidiriam na mesma porta do host. Os bots conectam pela rede interna
+# do compose (server:5000), que não precisa de porta publicada, então em treino
+# as portas do host não servem para nada — só o --record-path importa. Ficam
+# atrás de --publish, para o caso raro de assistir/anexar a UMA partida.
+PORTS_BLOCK = ('    ports:\n'
+               '      - "5000:5000"\n'
+               '      - "8080:8080"\n')
 
 # Sem `restart: on-failure`: quando a partida acaba e o servidor sai, os 22
 # bots reiniciariam em loop, consumindo CPU e travando o `down` da próxima
@@ -67,6 +73,9 @@ def main():
     ap.add_argument("--match-id", default="match")
     ap.add_argument("--headless", action="store_true")
     ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--publish", action="store_true",
+                    help="publica portas 5000/8080 no host (quebra paralelismo; "
+                         "só p/ assistir/anexar a uma partida)")
     ap.add_argument("--out", default="docker-compose.yml")
     a = ap.parse_args()
 
@@ -76,9 +85,10 @@ def main():
     if a.quiet:
         extra.append("--quiet")
 
+    ports = PORTS_BLOCK if a.publish else ""
     parts = [TPL_HEADER.format(timer_mode=a.timer_mode, match_id=a.match_id,
                                extra="\n      ".join(extra),
-                               uid=os.getuid(), gid=os.getgid())]
+                               uid=os.getuid(), gid=os.getgid(), ports=ports)]
     for num in range(1, 12):
         parts.append(TPL_BOT.format(team="home", team_upper="HOME", num=num, image=a.home))
     for num in range(1, 12):

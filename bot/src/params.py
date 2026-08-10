@@ -72,6 +72,16 @@ DEFAULTS = {
     "pressure_radius": 2500.0,
 }
 
+# LIÇÃO (migração Linux, ago/2026): as versões (v3, v6, v8, v9) foram estados de
+# CÓDIGO, e só a v9 ficou versionada no git — não dá para reproduzir a v3 a
+# partir do repo, e a comparação v3×v9 vs level-1 dependeu de importar a imagem
+# antiga do Mac. Daqui pra frente, toda mudança que DEFINE uma versão vira GENE
+# aqui (como angle_seek e shot_min_gap), nunca código hardcoded — assim qualquer
+# versão é reproduzível do repositório e a evolução pode explorá-la. Dívida
+# concreta: o portão de finalização (física antiga da v3 → empírico da v9)
+# deveria ser um gene shot_gate: "physics" | "empirical", não um if fixo em
+# my_bot.py.
+#
 # --- genes discretos: qual implementação ocupa cada encaixe ----------------
 # A evolução de ESTRUTURA muda estes. Cada valor é o nome de uma alternativa.
 STRUCTURE_DEFAULTS = {
