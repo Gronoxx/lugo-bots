@@ -9,12 +9,19 @@ Uso:
                          --out docker-compose.yml
 """
 import argparse
+import os
 
+# No Linux nativo, root dentro do container = root no host, então o replay
+# gravado via --record-path sai como root:root 0600 e o usuário do host não
+# consegue lê-lo — match_done.py quebra com PermissionError e a partida "trava"
+# até o timeout. Rodar o servidor com o uid:gid do host resolve (no macOS o
+# Docker Desktop já remapeava o dono, por isso lá não aparecia).
 TPL_HEADER = """name: lugo-bench
 
 services:
   server:
     image: lugobots/server:latest
+    user: "{uid}:{gid}"
     command: >
       play
       --dev-mode
@@ -70,7 +77,8 @@ def main():
         extra.append("--quiet")
 
     parts = [TPL_HEADER.format(timer_mode=a.timer_mode, match_id=a.match_id,
-                               extra="\n      ".join(extra))]
+                               extra="\n      ".join(extra),
+                               uid=os.getuid(), gid=os.getgid())]
     for num in range(1, 12):
         parts.append(TPL_BOT.format(team="home", team_upper="HOME", num=num, image=a.home))
     for num in range(1, 12):
