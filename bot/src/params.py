@@ -82,6 +82,11 @@ DEFAULTS = {
 # deveria ser um gene shot_gate: "physics" | "empirical", não um if fixo em
 # my_bot.py.
 #
+# Reforço (arquitetura, ago/2026): imagens Docker NÃO atravessam Mac (arm64) ↔
+# Linux (amd64) — importar o mybot:v3 do Mac deu "exec format error". O canônico
+# é SEMPRE o código no Git (reconstruível em qualquer arquitetura), nunca a
+# imagem transferida. Mais uma razão para versão = gene, não código.
+#
 # --- genes discretos: qual implementação ocupa cada encaixe ----------------
 # A evolução de ESTRUTURA muda estes. Cada valor é o nome de uma alternativa.
 STRUCTURE_DEFAULTS = {
