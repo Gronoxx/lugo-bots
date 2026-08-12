@@ -183,9 +183,11 @@ def proxy_for_replay(d, side):
         gk_y = float(d[oy][j, k[0]]) if len(k) else GOAL_C
         shot_slacks.append(abs(e["ycross"] - gk_y) - (GK_HALF + GK_SPEED * t))
 
+    our_goals = int(d["sc_home"][-1]) if side == "home" else int(d["sc_away"][-1])
+    conceded = int(d["sc_away"][-1]) if side == "home" else int(d["sc_home"][-1])
     return dict(best_slacks=best_slacks, danger_poss=len(danger_poss),
                 good_chances=len(good_chance_poss), shot_slacks=shot_slacks,
-                opp_danger=opp_danger)
+                opp_danger=opp_danger, our_goals=our_goals, conceded=conceded)
 
 
 def side_of(path):
@@ -195,7 +197,7 @@ def side_of(path):
 def summarize(files):
     bs, ss = [], []
     danger_poss = good = opp_danger = 0
-    ok = 0
+    goals = conceded = ok = 0
     for p in files:
         try:
             d = build_d(p)
@@ -208,6 +210,8 @@ def summarize(files):
         danger_poss += r["danger_poss"]
         good += r["good_chances"]
         opp_danger += r["opp_danger"]
+        goals += r["our_goals"]
+        conceded += r["conceded"]
         ok += 1
     nb = len(bs) or 1
     ns = len(ss) or 1
@@ -226,6 +230,9 @@ def summarize(files):
         n_shots=len(ss),
         # fusivel
         opp_danger_turns=opp_danger,
+        # gols (confirmacao final; ruidoso)
+        goals_mean=goals / (ok or 1),
+        conceded_mean=conceded / (ok or 1),
     )
 
 
@@ -248,6 +255,7 @@ def main():
     print(f"  fracao chutes slack>0 = {m['shot_slack_frac_pos']:.3f}  (n={m['n_shots']})")
     print("FUSIVEL defensivo:")
     print(f"  turnos adversario no nosso perigo = {m['opp_danger_turns']}")
+    print(f"GOLS (confirmacao, ruidoso): {m['goals_mean']:.2f} pro / {m['conceded_mean']:.2f} contra por jogo")
 
 
 if __name__ == "__main__":
