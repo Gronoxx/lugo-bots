@@ -22,6 +22,7 @@ from params import P
 from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
                       GOAL_MIN_Y, MAX_X, MAX_Y, PLAYER_SPEED, dist,
                       lane_clearance, lead_target, opponent_can_intercept,
+                      can_be_intercepted, intercept_risk,
                       point, speed_for_distance, turns_for_ball,
                       turns_for_player)
 
@@ -29,6 +30,8 @@ from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
 N_CHASERS = int(round(P["n_chasers"]))
 # Margem de segurança para considerar uma linha de passe utilizável
 PASS_MARGIN = P["pass_margin"]
+# interceptação velocity-aware ligada? (gene use_velocity). Default off => v9.
+USE_VELOCITY = (P.get("use_velocity") == "on")
 # Abaixo disto, o alvo é indistinguível da posição atual e lugo4py lança
 # "A vector cannot have zero length" — o que faz o jogador perder o turno.
 MIN_MOVE_DIST = 12.0
@@ -118,16 +121,24 @@ class MyBot(lugo4py.Bot, ABC):
             base = tac.formation_position(self.number, ball.position, side,
                                           aggression=P["aggression_support"])
 
-            # movimentação sem bola: um atacante do flanco oposto corre ao 2º
-            # poste quando o portador está avançado e aberto (fabrica o alvo que
-            # o funil mostra faltar). Determinístico; default off.
+            # corrida ao 2º poste (far_post_run) tem prioridade quando ligada e a
+            # jogada está madura. Default off.
             if P.get("far_post_run") == "on" and holder is not None:
                 fp = self._far_post_target(inspector, holder, side)
                 if fp is not None:
                     return [safe_move(inspector, me, fp)]
 
-            # se estou perto do portador, abrir linha de passe em vez de colar
-            if holder is not None and dist(me.position, holder.position) < P["support_near_holder"]:
+            if holder is None:
+                return [safe_move(inspector, me, base)]
+
+            # apoio ATIVO (support_mode="offer"): recebedores sobem oferecendo
+            # linha de passe segura; default "v9" = oferta em anel (idêntico).
+            if P.get("support_mode") == "offer":
+                tgt = self._support_offer_run(inspector, holder, side, base)
+                return [safe_move(inspector, me, tgt)]
+
+            # v9 (default): se perto do portador, abrir linha de passe em vez de colar
+            if dist(me.position, holder.position) < P["support_near_holder"]:
                 base = self._support_offer(inspector, holder, base)
 
             return [safe_move(inspector, me, base)]
@@ -257,14 +268,25 @@ class MyBot(lugo4py.Bot, ABC):
             if d > geo.MAX_KICK_RANGE:
                 continue
 
-            # bloqueado por um defensor no caminho?
+            # bloqueado por um defensor? velocity-aware se ligado;
+            # USE_VELOCITY=False => opponent_can_intercept exato = v9.
             others = [o for o in opponents if gk is None or o.number != gk.number]
-            if opponent_can_intercept(me.position, target, others, BALL_MAX_SPEED):
+            if can_be_intercepted(me.position, target, others, BALL_MAX_SPEED,
+                                  USE_VELOCITY):
                 continue
 
             t_ball = turns_for_ball(BALL_MAX_SPEED, d)
             if t_ball == math.inf:
                 continue
+
+            # PISO DE POTÊNCIA DE CHEGADA (Problema 2): rejeita chute cuja
+            # velocidade REAL de saída chega fraca ao alvo. shot_arrival_min=0
+            # => inerte (=v9). 200 <=> alcance efetivo 6000.
+            if P["shot_arrival_min"] > 0.0:
+                v0_eff = geo.achievable_shot_speed(inspector, me,
+                                                   inspector.get_ball(), target)
+                if fin.arrival_speed(v0_eff, d) < P["shot_arrival_min"]:
+                    continue
 
             # Portão EMPÍRICO, não teórico.
             #
@@ -325,13 +347,12 @@ class MyBot(lugo4py.Bot, ABC):
         return best
 
     def _best_pass(self, inspector):
-        """Melhor passe disponível, ou None se conduzir for melhor.
-
-        Pontua cada companheiro por ganho de avanço, segurança da linha e
-        proximidade ao gol, e só passa se o ganho for relevante.
-        """
+        """Melhor passe, ou None. POSSE OBJETIVA (Problema 1): retém a bola com
+        passe seguro (linha executável + não interceptável), preferindo avanço;
+        sob pressão aceita lateral/trás LIMITADO (pass_retain_backmax). Penaliza
+        super-marcação acima de um limiar e premia a folga de interceptação.
+        Nunca despeja no goleiro. DEFAULT = v9 com todos os genes desligados."""
         me = inspector.get_me()
-        side = inspector.get_my_team_side()
         goal_center = self.mapper.get_attack_goal().get_center()
         opponents = list(inspector.get_opponent_players())
         mates = [p for p in inspector.get_my_team_players()
@@ -340,8 +361,18 @@ class MyBot(lugo4py.Bot, ABC):
         my_gain = dist(me.position, goal_center)
         pressure = self._pressure_on(me.position, opponents)
 
+        under_pressure = False
+        if P.get("pass_retain") == "on":
+            t_press = min((turns_for_player(dist(me.position, o.position))
+                           for o in opponents), default=math.inf)
+            under_pressure = (pressure >= P["pass_retain_pressure"]
+                              or t_press <= P["pass_retain_turns"])
+
         best = None
-        best_score = 0.0
+        best_score = P["pass_min_score"]        # v9: 0.0
+        retain = None
+        retain_score = -1e18
+
         for mate in mates:
             if mate.number == tac.GOALKEEPER:
                 continue
@@ -355,18 +386,28 @@ class MyBot(lugo4py.Bot, ABC):
                 continue
             target = lead_target(mate, t_ball)
 
-            if opponent_can_intercept(me.position, target, opponents, speed):
+            # veto de interceptação (velocity-aware se ligado). Uma varredura só:
+            # quando pass_w_intercept>0 reusa intercept_risk p/ veto E score.
+            r = None
+            if P["pass_w_intercept"] > 0.0:
+                r = intercept_risk(me.position, target, opponents, speed, USE_VELOCITY)
+                if r <= 0.0:
+                    continue
+            elif can_be_intercepted(me.position, target, opponents, speed, USE_VELOCITY):
                 continue
 
-            # ganho: aproxima do gol?
             mate_gain = dist(target, goal_center)
             advance = my_gain - mate_gain
             clearance = lane_clearance(me.position, target, opponents)
             mate_pressure = self._pressure_on(mate.position, opponents)
 
-            # bônus de TROCA (switch): passar ao flanco OPOSTO, em espaço, quando
-            # já avançamos (meio/terço ofensivo). Desloca o goleiro (anda 200/turno
-            # vs bola 400) e abre ângulo para a finalização seguinte.
+            # bônus de segurança da linha (posse objetiva). Gate por backmax:
+            # NÃO premia passe que recua demais (revisor B) — não vira spam p/ trás.
+            safety = 0.0
+            if r is not None and advance > -P["pass_retain_backmax"]:
+                safety = P["pass_w_intercept"] * PLAYER_SPEED * min(r, geo.INTERCEPT_RISK_CAP)
+
+            # bônus de TROCA (switch): passar ao flanco OPOSTO, em espaço (v9).
             switch = 0.0
             if P["pass_w_switch"] > 0 and advance > -1000 \
                     and (target.y - MAX_Y / 2) * (me.position.y - MAX_Y / 2) < 0 \
@@ -380,10 +421,29 @@ class MyBot(lugo4py.Bot, ABC):
                      + P["pass_w_clearance"] * clearance
                      - P["pass_w_mate_pressure"] * mate_pressure
                      + P["pass_w_pressure_bonus"] * pressure_bonus(pressure)
-                     + switch)
+                     + switch
+                     - P["pass_w_overmark"] * max(0.0, mate_pressure
+                                                  - P["pass_mark_threshold"])
+                     + safety)
+
+            # candidato de RETENÇÃO (só com pass_retain="on"): passe seguro que
+            # perde menos avanço, recuo LIMITADO por pass_retain_backmax.
+            if P.get("pass_retain") == "on" and advance > -P["pass_retain_backmax"]:
+                rscore = (clearance
+                          + P["pass_retain_advance_w"] * advance
+                          - P["pass_w_mate_pressure"] * mate_pressure)
+                if rscore > retain_score:
+                    retain_score, retain = rscore, (target, speed)
+
+            # recuo grande só passa sob pressão (floor=20000 => nunca corta = v9)
+            if advance < -P["pass_backward_floor"] and not under_pressure:
+                continue
+
             if score > best_score:
                 best_score, best = score, (target, speed)
 
+        if best is None and under_pressure and retain is not None:
+            best = retain
         if best is None:
             return None
         target, speed = best
@@ -501,32 +561,118 @@ class MyBot(lugo4py.Bot, ABC):
                     best_score, best = score, cand
         return best
 
-    def _far_post_target(self, inspector, holder, side):
-        """Ponto no 2º poste para UM atacante do flanco oposto, quando o portador
-        está avançado e aberto. Retorna None se não me aplico (não sou o corredor
-        designado, ou a jogada não está madura). A designação é determinística:
-        todos os agentes veem o mesmo estado e elegem o mesmo corredor, então não
-        há necessidade de comunicação entre eles."""
-        if self.number not in tac.FORWARDS:
-            return None
+    def _support_offer_run(self, inspector, holder, side, base):
+        """Designa deterministicamente quem sobe (recebedor) e em qual canal; os
+        demais mantêm a forma OU o outlet curto da v9 (fusível anti-Problema 1)."""
+        me = inspector.get_me()
+        if self.number not in tac.MIDFIELDERS and self.number not in tac.FORWARDS:
+            return base                              # FUSÍVEL: zagueiros/GK não sobem
+
+        eligible = [p for p in inspector.get_my_team_players()
+                    if p.number != tac.GOALKEEPER
+                    and p.number != holder.number
+                    and (p.number in tac.MIDFIELDERS or p.number in tac.FORWARDS)]
+
+        if P.get("far_post_run") == "on":
+            fp_num = self._far_post_runner(inspector, holder, side)
+            if fp_num is not None:
+                eligible = [p for p in eligible if p.number != fp_num]
+        if not eligible:
+            return base
+
+        # eleição por PAPEL (atacantes por número, depois meias): estável no tempo,
+        # sem flicker por ruído de posição, determinística sem história (revisor C).
+        eligible.sort(key=lambda p: (0 if p.number in tac.FORWARDS else 1, p.number))
+        n_run = int(round(P["support_n_forward"]))
+        runners = eligible[:max(0, n_run)]
+
+        if all(p.number != self.number for p in runners):
+            # não sou runner: perto do portador ainda ofereço a linha CURTA da v9
+            # (preserva o outlet curto — revisor A).
+            if dist(me.position, holder.position) < P["support_near_holder"]:
+                return self._support_offer(inspector, holder, base)
+            return base
+
+        # LARGURA: runners por y -> canais espalhados sem cruzamento.
+        R = len(runners)
+        by_y = sorted(runners, key=lambda p: (p.position.y, p.number))
+        slot = next(i for i, p in enumerate(by_y) if p.number == self.number)
+        off = 0.0 if R == 1 else (-1.0 + 2.0 * slot / (R - 1))
+        # canais centrados no y do PORTADOR (clamp à boca do gol), não no meio do
+        # campo -> ofertas em linhas usáveis (revisor D).
+        center_y = max(GOAL_MIN_Y, min(GOAL_MAX_Y, holder.position.y))
+        channel_y = center_y + off * P["support_channel_width"]
+        return self._offer_point(inspector, holder, channel_y, base)
+
+    def _offer_point(self, inspector, holder, channel_y, base):
+        """Ponto de recepção à frente do portador no canal dado. Reusa
+        lane_clearance, _pressure_on e o veto velocity-aware (revisor B)."""
+        opponents = list(inspector.get_opponent_players())
+        goal = self.mapper.get_attack_goal().get_center()
+        mates = [p for p in inspector.get_my_team_players()
+                 if p.number != self.number and p.number != holder.number]
+
+        dir_sign = 1.0 if goal.x > holder.position.x else -1.0
+        anchor_x = holder.position.x + dir_sign * P["support_advance"]
+        d_holder_goal = dist(holder.position, goal)
+        step = P["support_off_search_r"]
+
+        best, best_score = None, -1e18
+        for r_mult in (0.0, 1.0, 2.0):
+            radius = step * r_mult
+            n_ang = 1 if radius == 0.0 else 8
+            for k in range(n_ang):
+                a = 2.0 * math.pi * k / n_ang if n_ang > 1 else 0.0
+                cand = point(anchor_x + math.cos(a) * radius,
+                             channel_y + math.sin(a) * radius)
+                if dir_sign * (cand.x - holder.position.x) < -300.0:
+                    continue
+                pd = dist(holder.position, cand)
+                if pd < P["pass_min_dist"] or pd > geo.MAX_KICK_RANGE:
+                    continue
+                clearance = lane_clearance(holder.position, cand, opponents)
+                if clearance < PASS_MARGIN:
+                    continue
+                spd = speed_for_distance(pd)
+                if can_be_intercepted(holder.position, cand, opponents, spd,
+                                      USE_VELOCITY):
+                    continue
+                advance = d_holder_goal - dist(cand, goal)
+                press = self._pressure_on(cand, opponents)
+                crowd = 0.0
+                if mates:
+                    dmin = min(dist(cand, p.position) for p in mates)
+                    crowd = max(0.0, P["support_crowd_radius"] - dmin)
+                score = (P["support_off_w_advance"] * advance
+                         + P["support_off_w_clear"] * clearance
+                         - P["support_off_w_press"] * press
+                         - P["support_off_w_crowd"] * crowd)
+                if score > best_score:
+                    best_score, best = score, cand
+        return best if best is not None else base
+
+    def _far_post_runner(self, inspector, holder, side):
+        """Número do atacante eleito à corrida ao 2º poste, ou None. Determinístico."""
         hy = holder.position.y
         mid = MAX_Y / 2.0
-        # gate: portador avançado (terço ofensivo) E aberto (longe do eixo)
         if tac.ball_advance_frac(holder.position, side) < 0.62:
             return None
         if abs(hy - mid) < 1200.0:
             return None
-        # corredor designado = atacante (≠ portador) mais à frente no flanco OPOSTO
         forwards = [p for p in inspector.get_my_team_players()
                     if p.number in tac.FORWARDS and p.number != holder.number]
         if not forwards:
             return None
-        sign = 1.0 if hy >= mid else -1.0            # lado da bola
-        runner = min(forwards, key=lambda p: sign * (p.position.y - mid))
-        if runner.number != self.number:
+        sign = 1.0 if hy >= mid else -1.0
+        return min(forwards, key=lambda p: sign * (p.position.y - mid)).number
+
+    def _far_post_target(self, inspector, holder, side):
+        if self.number not in tac.FORWARDS:
             return None
-        # alvo: 2º poste (oposto ao lado da bola), recuado da linha para receber e
-        # concluir dentro da área, não em cima da linha.
+        if self._far_post_runner(inspector, holder, side) != self.number:
+            return None
+        hy = holder.position.y
+        mid = MAX_Y / 2.0
         goal_center = self.mapper.get_attack_goal().get_center()
         far_y = GOAL_MAX_Y - 350.0 if hy < mid else GOAL_MIN_Y + 350.0
         inward = -1400.0 if goal_center.x > MAX_X / 2 else 1400.0

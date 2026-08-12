@@ -38,6 +38,10 @@ DEFAULTS = {
     # gate TEMPORAL (shot_gate="slack"): slack = |alvo.y-gk.y| - (560+gk_reach_speed*t)
     "shot_min_slack": 0.0,     # autoriza o chute se slack > isto (calibrado: >0)
     "gk_reach_speed": 75.0,    # calibrado (AUC 0.87 vs gol). NÃO usar 200 (erro v6/v8)
+    # PISO de potência de CHEGADA usando a velocidade REAL de saída do chute
+    # (achievable_shot_speed). 0 = inerte (=v9); 200 <=> alcance efetivo 6000
+    # (= dangerous_shot_range). Problema 2 (chute fraco / em cima do goleiro).
+    "shot_arrival_min": 0.0,
 
     # passe
     "pass_min_dist": 800.0,
@@ -49,6 +53,16 @@ DEFAULTS = {
     # bônus de TROCA (switch): passar ao flanco OPOSTO em espaço, na área de
     # ataque, desloca o goleiro e abre ângulo. Default 0 = v9 (item 4 do plano).
     "pass_w_switch": 0.0,             # folga mínima da linha de passe
+    # --- posse objetiva (Problema 1) + interceptação velocity-aware. Todos =v9. ---
+    "pass_w_intercept": 0.0,        # peso da folga de interceptação no score (0=v9)
+    "pass_min_score": 0.0,          # limiar de aceitação do passe (v9: best_score=0.0)
+    "pass_w_overmark": 0.0,         # penalidade por marcação do receptor ACIMA do limiar
+    "pass_mark_threshold": 0.0,     # limiar de marcação (_pressure_on) do receptor
+    "pass_backward_floor": 20000.0, # recuo acima disto só passa sob pressão (20000=nunca=v9)
+    "pass_retain_pressure": 1.2,    # pressão sobre o portador p/ ativar retenção
+    "pass_retain_turns": 3.0,       # turnos até um oponente alcançar o portador (gatilho)
+    "pass_retain_advance_w": 0.8,   # peso do avanço no score do passe de retenção
+    "pass_retain_backmax": 3000.0,  # recuo MÁXIMO de retenção E teto p/ o bônus de segurança
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -61,6 +75,17 @@ DEFAULTS = {
     "support_radius_b": 1600.0,
     "support_w_clearance": 2.0,
     "support_w_pressure": 2.0,
+    # apoio ATIVO (support_mode="offer"): recebedores que sobem oferecendo linha.
+    # Inertes com support_mode="v9" (default) — não afetam a v9.
+    "support_n_forward": 2.0,        # quantos apoiadores viram recebedores (FUSÍVEL)
+    "support_advance": 2500.0,       # distância à frente do portador (rumo ao gol)
+    "support_channel_width": 1800.0, # afastamento lateral dos canais (LARGURA)
+    "support_off_w_advance": 1.0,
+    "support_off_w_clear": 2.0,
+    "support_off_w_press": 1500.0,
+    "support_off_w_crowd": 1.0,      # anti-amontoamento (A/B inicial: setar 0)
+    "support_crowd_radius": 2200.0,
+    "support_off_search_r": 800.0,
 
     # formação
     "shift_x": 0.30,                  # quanto a linha desliza com a bola
@@ -121,6 +146,16 @@ STRUCTURE_DEFAULTS = {
     # que inviabilizou o switch lateral do item 4). NÃO TESTADO — validar na proxy
     # antes de ligar. Default off = v9.
     "far_post_run": "off",                 # | on
+    # veto/risco de interceptação sensível à velocidade do oponente e à
+    # velocidade de CHEGADA da bola. off = física v9 (opponent_can_intercept).
+    # on = SÓ ACRESCENTA ameaça (min(pos_atual,pos_extrapolada)+dwell+densa) —
+    # nunca libera veto (jogador Lugo não tem inércia). Default off = v9.
+    "use_velocity": "off",                 # | on
+    # retenção de posse sob pressão (passe lateral/trás LIMITADO). off = v9.
+    "pass_retain": "off",                  # | on
+    # movimentação sem bola ativa (recebedores sobem oferecendo linha).
+    # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
+    "support_mode": "v9",                  # | offer
 }
 
 # faixas admissíveis para mutação (min, max) — evita indivíduos absurdos
@@ -162,6 +197,25 @@ BOUNDS = {
     "gk_jump_max_turns": (1.0, 20.0),
     "gk_clearance_speed_mult": (1.0, 2.0),
     "pressure_radius": (800.0, 6000.0),
+    "shot_arrival_min": (0.0, 400.0),
+    "pass_w_intercept": (0.0, 3.0),
+    "pass_min_score": (-3000.0, 3000.0),
+    "pass_w_overmark": (0.0, 6.0),
+    "pass_mark_threshold": (0.0, 5.0),
+    "pass_backward_floor": (500.0, 20000.0),
+    "pass_retain_pressure": (0.0, 5.0),
+    "pass_retain_turns": (0.0, 15.0),
+    "pass_retain_advance_w": (0.0, 2.0),
+    "pass_retain_backmax": (500.0, 8000.0),
+    "support_n_forward": (0.0, 5.0),
+    "support_advance": (800.0, 5000.0),
+    "support_channel_width": (0.0, 3500.0),
+    "support_off_w_advance": (0.0, 4.0),
+    "support_off_w_clear": (0.0, 6.0),
+    "support_off_w_press": (0.0, 5000.0),
+    "support_off_w_crowd": (0.0, 5.0),
+    "support_crowd_radius": (500.0, 4000.0),
+    "support_off_search_r": (300.0, 2000.0),
 }
 
 STRUCTURE_OPTIONS = {
@@ -174,6 +228,9 @@ STRUCTURE_OPTIONS = {
     "shot_gate": ["threshold", "xg", "slack"],
     "chase_mode": ["fixed", "adaptive"],
     "far_post_run": ["off", "on"],
+    "use_velocity": ["off", "on"],
+    "pass_retain": ["off", "on"],
+    "support_mode": ["v9", "offer"],
 }
 
 

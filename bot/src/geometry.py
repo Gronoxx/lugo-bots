@@ -237,6 +237,119 @@ def opponent_can_intercept(origin, target, opponents, kick_speed) -> bool:
     return False
 
 
+# ---- interceptação sensível à velocidade (gene use_velocity) --------------
+# opponent_can_intercept (acima) é o PIOR CASO estático correto: sem inércia no
+# Lugo, o oponente alcança qualquer ponto a PLAYER_SPEED*t da posição ATUAL.
+# Por isso a velocidade NÃO pode tornar o veto mais frouxo — só pode ACRESCENTAR
+# ameaça. use_velocity="on" refina em três eixos, todos conservadores:
+#   1. min(d_agora, d_extrapolada): se a corrida comprometida do oponente o leva
+#      para MAIS PERTO de um ponto da linha, usamos essa distância menor.
+#   2. dwell: bola que chega fraca permanece na zona de contato -> concede turnos
+#      extras ao oponente (t_ball efetivo maior).
+#   3. amostragem densa (~TOUCH_RADIUS) em vez de 8 pontos: não pula zagueiro
+#      entre amostras (falso-seguro do usuário).
+INTERCEPT_LEAD_TURNS = 6.0
+INTERCEPT_DWELL_CAP = 4.0
+INTERCEPT_SAMPLE_SPACING = 300.0
+INTERCEPT_MAX_STEPS = 32
+INTERCEPT_RISK_CAP = 6.0
+UNREACHABLE_RISK = -999.0
+
+
+def _lead_pos(entity, turns: float):
+    """Posição prevista de `entity` após `turns` (velocidade atual, limitada a
+    PLAYER_SPEED), presa ao campo (o servidor prende jogadores à borda)."""
+    v = entity.velocity
+    n = math.hypot(v.direction.x, v.direction.y)
+    if n == 0 or v.speed <= 0 or turns <= 0:
+        return float(entity.position.x), float(entity.position.y)
+    dx, dy = v.direction.x / n, v.direction.y / n
+    travel = min(v.speed, PLAYER_SPEED) * turns
+    x = entity.position.x + dx * travel
+    y = entity.position.y + dy * travel
+    return max(0.0, min(MAX_X, x)), max(0.0, min(MAX_Y, y))
+
+
+def _arrival_speed_at(v0: float, d: float) -> float:
+    """Velocidade de chegada da bola após percorrer d (forma fechada; 0 se não
+    chega). Consistente com finishing.arrival_speed."""
+    s2 = min(v0, BALL_MAX_SPEED) ** 2 - 20.0 * d
+    return math.sqrt(s2) if s2 > 0.0 else 0.0
+
+
+def _dwell_turns(v_arr: float) -> float:
+    """Turnos extras que uma bola a v_arr concede ao oponente por permanecer na
+    zona de contato, ACIMA do que concede uma bola no máximo."""
+    ref = TOUCH_RADIUS / max(ball_step(BALL_MAX_SPEED), 1.0)
+    here = TOUCH_RADIUS / max(ball_step(v_arr), 1.0)
+    return max(0.0, min(INTERCEPT_DWELL_CAP, here - ref))
+
+
+def _intercept_scan(origin, target, opponents, kick_speed, use_velocity: bool):
+    """MENOR folga temporal (turns_for_player(d_opp) - t_ball_eff) sobre pontos e
+    oponentes. <=0 => interceptável. UNREACHABLE_RISK se a bola não alcança.
+
+    use_velocity=False: 8 amostras, d_opp estático, sem dwell -> min_slack<=0
+    é EXATAMENTE equivalente a opponent_can_intercept (mesmo NO_BLOCK_NEAR_ORIGIN,
+    mesmo <=, mesmo t_ball==inf)."""
+    dx, dy = (target.x - origin.x), (target.y - origin.y)
+    total = math.hypot(dx, dy)
+    if total == 0:
+        return math.inf
+    if use_velocity:
+        steps = max(8, min(INTERCEPT_MAX_STEPS,
+                           int(math.ceil(total / INTERCEPT_SAMPLE_SPACING))))
+    else:
+        steps = 8
+
+    min_slack = math.inf
+    for i in range(1, steps + 1):
+        frac = i / steps
+        d_ball = total * frac
+        if d_ball < NO_BLOCK_NEAR_ORIGIN:
+            continue
+        px = origin.x + dx * frac
+        py = origin.y + dy * frac
+        t_ball = turns_for_ball(kick_speed, d_ball)
+        if t_ball == math.inf:
+            return UNREACHABLE_RISK
+        if use_velocity:
+            t_ball_eff = t_ball + _dwell_turns(_arrival_speed_at(kick_speed, d_ball))
+            lead = min(float(t_ball), INTERCEPT_LEAD_TURNS)
+        else:
+            t_ball_eff = t_ball
+            lead = 0.0
+        for opp in opponents:
+            d_opp = math.hypot(px - opp.position.x, py - opp.position.y)
+            if lead > 0.0:
+                lx, ly = _lead_pos(opp, lead)
+                d_lead = math.hypot(px - lx, py - ly)
+                if d_lead < d_opp:          # velocidade SÓ pode aproximar a ameaça
+                    d_opp = d_lead
+            slack = turns_for_player(d_opp) - t_ball_eff
+            if slack < min_slack:
+                min_slack = slack
+    return min_slack
+
+
+def can_be_intercepted(origin, target, opponents, kick_speed,
+                       use_velocity: bool = False) -> bool:
+    """use_velocity=False -> DELEGA a opponent_can_intercept (v9 exato).
+    use_velocity=True -> versão conservadora (só adiciona bloqueios)."""
+    if not use_velocity:
+        return opponent_can_intercept(origin, target, opponents, kick_speed)
+    return _intercept_scan(origin, target, opponents, kick_speed, True) <= 0.0
+
+
+def intercept_risk(origin, target, opponents, kick_speed,
+                   use_velocity: bool = False) -> float:
+    """Folga temporal (turnos) do oponente mais perigoso: >0 seguro, <=0
+    interceptável, UNREACHABLE_RISK se a bola não alcança. Contínuo, para o score
+    (maior = linha mais segura). Com use_velocity=False, r<=0 <=> veto da v9."""
+    r = _intercept_scan(origin, target, opponents, kick_speed, use_velocity)
+    return 30.0 if r == math.inf else r
+
+
 def lead_target(receiver, turns_ahead: float):
     """Onde o companheiro estará em `turns_ahead` turnos (passe com liderança)."""
     v = receiver.velocity
@@ -334,3 +447,36 @@ def kick_to(inspector, me, ball, target, desired_speed=BALL_MAX_SPEED):
     order.kick.velocity.direction.y = ky * 100.0
     order.kick.velocity.speed = s
     return order
+
+
+def achievable_shot_speed(inspector, me, ball, target) -> float:
+    """Velocidade de saída rumo a `target` do MELHOR chute alcançável (mesma
+    busca de kick_to com desired=BALL_MAX_SPEED), projetada na direção do alvo.
+    Captura o chute que sai fraco porque o jogador se move de lado ou a bola traz
+    velocidade adversa (_apply_server_kick). Alimenta o piso shot_arrival_min."""
+    tx, ty = target.x - ball.position.x, target.y - ball.position.y
+    ux, uy = _unit(tx, ty)
+    if (ux, uy) == (0.0, 0.0):
+        return 0.0
+    bv = ball.velocity
+    bux, buy = _unit(bv.direction.x, bv.direction.y)
+    cvx, cvy = bux * bv.speed, buy * bv.speed
+    pvx, pvy = _unit(me.velocity.direction.x, me.velocity.direction.y)
+    best_proj = 0.0
+    best_cost = float("inf")
+    for i in range(72):
+        a = math.radians(i * 5)
+        kx, ky = math.cos(a), math.sin(a)
+        for frac in (0.25, 0.5, 0.75, 1.0):
+            s = BALL_MAX_SPEED * frac
+            rx, ry, rn = _apply_server_kick(cvx, cvy, kx, ky, s, pvx, pvy)
+            if rn < 1e-6:
+                continue
+            cos = max(-1.0, min(1.0, (rx * ux + ry * uy) / rn))
+            ang_err = math.degrees(math.acos(cos))
+            speed_err = abs(rn - BALL_MAX_SPEED) / BALL_MAX_SPEED
+            cost = ang_err + 8.0 * speed_err
+            if cost < best_cost:
+                best_cost = cost
+                best_proj = max(0.0, rx * ux + ry * uy)
+    return best_proj
