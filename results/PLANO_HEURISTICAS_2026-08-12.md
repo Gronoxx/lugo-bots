@@ -86,3 +86,42 @@ Reportar:  (A) slack médio no chute   (B) fração de chutes com slack>0
 6. **Coordinate-ascent na proxy** dos genes de 2-5 + seleção maximin; **só então** confirmar o pacote campeão em gols (~50-70 jogos pareados, checando Δproxy⇒Δgol).
 
 **Cortado/rebaixado:** passe-em-profundidade em time (coordenação frágil → virou self-pass); ocupação de rebote (raro, ruidoso → sub-nota do far-post); marcação individual e consciência de placar (vs level-1 sem sinal → hedge/longo prazo); CMA-ES (coordinate-ascent basta).
+
+---
+
+## Resultados da execução autônoma (ago/2026)
+
+### O que foi implementado (todos como GENE, default = v9 — nunca regride)
+- **Item 1 — harness de proxy densa** (`bench/proxy_metric.py`, `gen_replays.sh`): folga temporal
+  do goleiro por chance, `gk_reach_speed=75` calibrado (AUC 0,87 vs gol). É o selecionador de
+  baixo ruído usado em tudo abaixo. **Entregue e validado.**
+- **Item 2 — gate de chute por folga temporal** (`shot_gate="slack"`): neutro em gols vs o gate
+  empírico da v9. A v9 já estava bem calibrada aqui. Fica como gene.
+- **Item 3 — condução de toque** (`carry_mode="touch"`): **o ganho real.** Ver funil abaixo.
+- **Item 4 — switch/lado fraco** (`pass_w_switch`): **piorou** (cancela o ganho do touch). Cortado.
+- **Item 5 — chasers adaptativo** (`chase_mode="adaptive"`, `tactics.adaptive_chasers`): sinal
+  positivo consistente na proxy (perigo adversário ↓, taxa de chance ↑). Em confirmação.
+- **Item 6 — tuning `carry_step`** (bracket 1900/2200/2600): ganho do round-1 (n20) **regrediu**
+  no round-2 (n24); 2600 piorou a taxa de chance. Sem base para mexer no default 1500 (winner's
+  curse evitado).
+
+### Funil de criação de chance (proxy densa, por jogo)
+| config | danger_poss | taxa good_chance (2→3) | conv_boa (finalização) | gols(ruído) |
+|---|---|---|---|---|
+| v9 | 5,5 | 0,40 | 0,34 | 0,75 |
+| touch | 6,7 (**+22%**) | 0,42 | 0,37 | 1,04 |
+| touch+adaptive | 7,0 | 0,45 | 0,37 | 1,15 |
+
+**Mecanismo do touch:** melhora **levando a bola à zona mais vezes** (+22% de posses-perigo),
+não a conversão de cada posse. A taxa 2→3 (~0,42) e a finalização (~0,37) são tetos estáveis
+(coerente com o xG não ter batido a heurística).
+
+### Próximo gargalo (trabalho futuro, ofensivo)
+A taxa **good_chance/danger ≈ 0,42** é o teto: 58% das posses que chegam a ≤6000d têm o goleiro
+cobrindo. Melhorar isso exige **fabricar o alvo aberto por movimentação sem bola** — o item 4
+(switch lateral) atacava esse gargalo mas piorou; a alavanca é real, a implementação estava
+errada. Tentar **tabela/corredor ao poste (give-and-go)** em vez de troca lateral. A finalização
+(conv_boa 0,37) é teto calibrado — não perseguir.
+
+### Confirmação final em gols (v9 vs touch vs touch+adaptive, wait, pareado)
+<!-- PREENCHER quando a confirmação b4zjw5iny terminar -->

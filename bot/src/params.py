@@ -114,6 +114,13 @@ STRUCTURE_DEFAULTS = {
     "shot_gate": "threshold",              # | xg | slack
     # nº de chasers: fixo (v9) ou adaptativo (1 quando ganhamos com folga) — item 5
     "chase_mode": "fixed",                 # | adaptive
+    # corrida ao poste oposto (movimentação sem bola): quando o portador está
+    # avançado E aberto, UM atacante do flanco oposto corre ao 2º poste para
+    # oferecer o alvo aberto que o funil mostra faltar (taxa good_chance ~0,42).
+    # Determinístico sobre o estado compartilhado (não depende de comunicação, o
+    # que inviabilizou o switch lateral do item 4). NÃO TESTADO — validar na proxy
+    # antes de ligar. Default off = v9.
+    "far_post_run": "off",                 # | on
 }
 
 # faixas admissíveis para mutação (min, max) — evita indivíduos absurdos
@@ -166,6 +173,7 @@ STRUCTURE_OPTIONS = {
     "angle_seek": ["off", "on"],
     "shot_gate": ["threshold", "xg", "slack"],
     "chase_mode": ["fixed", "adaptive"],
+    "far_post_run": ["off", "on"],
 }
 
 

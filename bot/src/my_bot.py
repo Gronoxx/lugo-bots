@@ -118,6 +118,14 @@ class MyBot(lugo4py.Bot, ABC):
             base = tac.formation_position(self.number, ball.position, side,
                                           aggression=P["aggression_support"])
 
+            # movimentação sem bola: um atacante do flanco oposto corre ao 2º
+            # poste quando o portador está avançado e aberto (fabrica o alvo que
+            # o funil mostra faltar). Determinístico; default off.
+            if P.get("far_post_run") == "on" and holder is not None:
+                fp = self._far_post_target(inspector, holder, side)
+                if fp is not None:
+                    return [safe_move(inspector, me, fp)]
+
             # se estou perto do portador, abrir linha de passe em vez de colar
             if holder is not None and dist(me.position, holder.position) < P["support_near_holder"]:
                 base = self._support_offer(inspector, holder, base)
@@ -492,6 +500,37 @@ class MyBot(lugo4py.Bot, ABC):
                 if score > best_score:
                     best_score, best = score, cand
         return best
+
+    def _far_post_target(self, inspector, holder, side):
+        """Ponto no 2º poste para UM atacante do flanco oposto, quando o portador
+        está avançado e aberto. Retorna None se não me aplico (não sou o corredor
+        designado, ou a jogada não está madura). A designação é determinística:
+        todos os agentes veem o mesmo estado e elegem o mesmo corredor, então não
+        há necessidade de comunicação entre eles."""
+        if self.number not in tac.FORWARDS:
+            return None
+        hy = holder.position.y
+        mid = MAX_Y / 2.0
+        # gate: portador avançado (terço ofensivo) E aberto (longe do eixo)
+        if tac.ball_advance_frac(holder.position, side) < 0.62:
+            return None
+        if abs(hy - mid) < 1200.0:
+            return None
+        # corredor designado = atacante (≠ portador) mais à frente no flanco OPOSTO
+        forwards = [p for p in inspector.get_my_team_players()
+                    if p.number in tac.FORWARDS and p.number != holder.number]
+        if not forwards:
+            return None
+        sign = 1.0 if hy >= mid else -1.0            # lado da bola
+        runner = min(forwards, key=lambda p: sign * (p.position.y - mid))
+        if runner.number != self.number:
+            return None
+        # alvo: 2º poste (oposto ao lado da bola), recuado da linha para receber e
+        # concluir dentro da área, não em cima da linha.
+        goal_center = self.mapper.get_attack_goal().get_center()
+        far_y = GOAL_MAX_Y - 350.0 if hy < mid else GOAL_MIN_Y + 350.0
+        inward = -1400.0 if goal_center.x > MAX_X / 2 else 1400.0
+        return point(goal_center.x + inward, far_y)
 
     def _cover_position(self, inspector, base):
         """Posição defensiva: entre a bola e o nosso gol, perto do posto."""
