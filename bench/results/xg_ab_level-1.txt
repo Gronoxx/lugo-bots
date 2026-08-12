@@ -1,0 +1,9 @@
+START 23:51:21
+v9               saldo +0.94 (std 1.12, n=16)  [0, 0, 3, 1, 1, 2, 0, 0, 3, 0, 0, 1, 0, 2, 0, 2]
+xg10             saldo +0.56 (std 0.81, n=16)  [1, 1, 1, 0, 0, 0, 0, 0, 2, 1, -1, 0, 0, 1, 2, 1]
+xg05             saldo +0.38 (std 0.96, n=16)  [1, 0, 0, 0, -1, 0, 2, -1, 0, 0, 1, 2, 0, 2, 0, 0]
+
+--- diferenca vs v9 (baseline saldo +0.94) ---
+  xg10             -0.38 (erro padrao 0.35)  nao conclusivo (detectaria >0.68)
+  xg05             -0.56 (erro padrao 0.37)  nao conclusivo (detectaria >0.72)
+[EXIT 0] 00:26:20

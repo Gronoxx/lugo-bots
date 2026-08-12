@@ -17,6 +17,7 @@ import lugo4py
 
 import geometry as geo
 import tactics as tac
+import finishing as fin
 from params import P
 from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
                       GOAL_MIN_Y, MAX_X, MAX_Y, PLAYER_SPEED, dist,
@@ -259,7 +260,26 @@ class MyBot(lugo4py.Bot, ABC):
             #   > 1800  -> 45%
             # Chutar com folga pequena é desperdício; exigir folga demais faz o
             # bot nunca chutar. O limiar é um gene, para a evolução ajustá-lo.
-            if gk is not None:
+            if P.get("shot_gate") == "xg" and fin.available():
+                # modelo xG: mesmas features do treino (reta bola->alvo).
+                # dist_line = d (alvo na linha do gol); ycross = target.y.
+                ux, uy = target.x - me.position.x, target.y - me.position.y
+                nrm = math.hypot(ux, uy) or 1.0
+                ux, uy = ux / nrm, uy / nrm
+                if gk is not None:
+                    tp = ((gk.position.x - me.position.x) * ux
+                          + (gk.position.y - me.position.y) * uy)
+                    tp = max(0.0, min(tp, d))
+                    cx, cy = me.position.x + ux * tp, me.position.y + uy * tp
+                    gkd = math.hypot(gk.position.x - cx, gk.position.y - cy)
+                else:
+                    gkd = 3000.0
+                v_arr = fin.arrival_speed(BALL_MAX_SPEED, d)
+                p_goal = fin.xg(d, v_arr, gkd, abs(target.y - MAX_Y / 2))
+                if p_goal is None or p_goal < P["shot_min_xg"]:
+                    continue
+                score = p_goal
+            elif gk is not None:
                 gap = abs(gk.position.y - target.y)
                 if gap < P["shot_min_gap"]:
                     continue

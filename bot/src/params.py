@@ -32,6 +32,8 @@ DEFAULTS = {
     # folga mínima do goleiro ao ponto de cruzamento para autorizar o chute.
     # Empírico: <1200 converteu 0% em 58 chutes; >1800 converteu 45%.
     "shot_min_gap": 1300.0,
+    # xG mínimo para autorizar o chute quando shot_gate="xg" (modelo finishing.py)
+    "shot_min_xg": 0.10,
 
     # passe
     "pass_min_dist": 800.0,
@@ -100,6 +102,9 @@ STRUCTURE_DEFAULTS = {
     "role_mode": "nearest_k",              # | zone
     "marking_mode": "cover",               # | man
     "keeper_mode": "line",                 # | sweeper
+    # portão de finalização: limiar fixo na folga do goleiro (v9) ou modelo xG
+    # de 4 features (bot/src/finishing.py, treinado vs level-1 amd64).
+    "shot_gate": "threshold",              # | xg
 }
 
 # faixas admissíveis para mutação (min, max) — evita indivíduos absurdos
@@ -110,6 +115,7 @@ BOUNDS = {
     "shot_post_margin": (50.0, 700.0),
     "shot_lateral": (0.0, 3500.0),
     "shot_min_gap": (0.0, 2600.0),
+    "shot_min_xg": (0.0, 0.6),
     "pass_min_dist": (300.0, 3000.0),
     "pass_speed_mult": (1.0, 2.0),
     "pass_w_clearance": (0.0, 3.0),
@@ -145,6 +151,7 @@ STRUCTURE_OPTIONS = {
     "marking_mode": ["cover", "man"],
     "keeper_mode": ["line", "sweeper"],
     "angle_seek": ["off", "on"],
+    "shot_gate": ["threshold", "xg"],
 }
 
 
