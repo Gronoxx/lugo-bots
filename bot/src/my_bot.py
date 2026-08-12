@@ -135,7 +135,9 @@ class MyBot(lugo4py.Bot, ABC):
             me = inspector.get_me()
             ball = inspector.get_ball()
             side = inspector.get_my_team_side()
-            chasers = tac.chasers(inspector, N_CHASERS)
+            chasers = (tac.adaptive_chasers(inspector, N_CHASERS, P["chase_margin"])
+                       if P.get("chase_mode") == "adaptive"
+                       else tac.chasers(inspector, N_CHASERS))
 
             if self.number in chasers:
                 # pressiona o portador pelo lado do nosso gol (corta o avanço)
@@ -162,7 +164,9 @@ class MyBot(lugo4py.Bot, ABC):
             me = inspector.get_me()
             ball = inspector.get_ball()
             side = inspector.get_my_team_side()
-            chasers = tac.chasers(inspector, N_CHASERS)
+            chasers = (tac.adaptive_chasers(inspector, N_CHASERS, P["chase_margin"])
+                       if P.get("chase_mode") == "adaptive"
+                       else tac.chasers(inspector, N_CHASERS))
 
             if self.number in chasers:
                 r = geo.intercept_turn(me.position, ball)

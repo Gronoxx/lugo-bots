@@ -117,6 +117,24 @@ def we_are_closest(inspector) -> bool:
     return best_mine <= best_theirs
 
 
+def adaptive_chasers(inspector, base_n, margin_turns):
+    """Nº de chasers adaptativo (item 5): quando ganhamos a bola com folga clara
+    (best_theirs - best_mine >= margin_turns), usa 1 a menos — libera um corpo
+    para o apoio/ataque; senão base_n. Determinístico: todos os jogadores
+    concordam (calculam do mesmo estado compartilhado, sem histórico)."""
+    ball = inspector.get_ball()
+    mine = [p for p in inspector.get_my_team_players() if p.number != GOALKEEPER]
+    theirs = [p for p in inspector.get_opponent_players() if p.number != GOALKEEPER]
+    ranked = rank_by_ball_arrival(mine, ball)
+    n = base_n
+    if mine and theirs:
+        best_mine = min(time_to_ball(p, ball) for p in mine)
+        best_theirs = min(time_to_ball(p, ball) for p in theirs)
+        if best_theirs - best_mine >= margin_turns:
+            n = max(1, base_n - 1)
+    return [p.number for p in ranked[:n]]
+
+
 def marking_target(inspector, number: int):
     """Adversário que este jogador deve marcar (defesa por interceptação).
 

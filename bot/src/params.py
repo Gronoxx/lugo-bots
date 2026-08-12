@@ -21,6 +21,7 @@ import os
 DEFAULTS = {
     # papéis
     "n_chasers": 2.0,              # quantos vão à bola (o baseline manda 11)
+    "chase_margin": 5.0,          # folga (turnos) p/ soltar 1 chaser (chase_mode="adaptive")
 
     # finalização
     "dangerous_shot_range": 6000.0,   # além disto a bola chega fraca ao gol
@@ -110,12 +111,15 @@ STRUCTURE_DEFAULTS = {
     "keeper_mode": "line",                 # | sweeper
     # portão de finalização: limiar fixo na folga do goleiro (v9) ou modelo xG
     # de 4 features (bot/src/finishing.py, treinado vs level-1 amd64).
-    "shot_gate": "threshold",              # | xg
+    "shot_gate": "threshold",              # | xg | slack
+    # nº de chasers: fixo (v9) ou adaptativo (1 quando ganhamos com folga) — item 5
+    "chase_mode": "fixed",                 # | adaptive
 }
 
 # faixas admissíveis para mutação (min, max) — evita indivíduos absurdos
 BOUNDS = {
     "n_chasers": (1.0, 5.0),
+    "chase_margin": (1.0, 20.0),
     "dangerous_shot_range": (2000.0, 8000.0),
     "shot_gk_penalty": (0.0, 0.5),
     "shot_post_margin": (50.0, 700.0),
@@ -161,6 +165,7 @@ STRUCTURE_OPTIONS = {
     "keeper_mode": ["line", "sweeper"],
     "angle_seek": ["off", "on"],
     "shot_gate": ["threshold", "xg", "slack"],
+    "chase_mode": ["fixed", "adaptive"],
 }
 
 

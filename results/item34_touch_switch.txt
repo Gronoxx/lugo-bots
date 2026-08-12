@@ -4,3 +4,7 @@ Itens 3-4 vs level-1 (A/B gols pareado, rush, n=16):
   combo(touch+switch@2.0): +0.75  (switch CANCELA o ganho do touch -> switch@2.0 PIORA)
 Decisao: touch = ganho real modesto (candidato do pacote). switch off (precisa tuning/abandono).
 Default segue v9 ate a confirmacao final do pacote (item 6 do plano).
+
+Confirmacao robusta touch (n=32): v9 +0.59, touch +0.75 -> +0.16 (SE 0.26), nao
+conclusivo. Pooled 3 lotes ~+0.15 saldo. Metricas densas favorecem (chances +10%,
+perigo +17%). Touch = ganho pequeno, consistente no processo, inconclusivo em gols.
