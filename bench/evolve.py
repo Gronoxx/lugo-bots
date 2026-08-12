@@ -39,11 +39,16 @@ import params  # noqa: E402  (DEFAULTS, BOUNDS)
 GENES = [g for g in params.DEFAULTS if g in params.BOUNDS]  # contínuos evoluíveis
 BOUNDS = params.BOUNDS
 BASELINE = {g: float(params.DEFAULTS[g]) for g in GENES}
+# genes ESTRUTURAIS (on/off, escolha de implementação) a evoluir — vazio por
+# padrão (retrocompatível); preenchido por --struct. STRUCT_OPTS dá as opções.
+STRUCT = []
+STRUCT_OPTS = params.STRUCTURE_OPTIONS
 IMAGE = "mybot:v9"
 
 
 def genome_id(gm):
-    blob = json.dumps({g: round(gm[g], 4) for g in sorted(gm)}, sort_keys=True)
+    blob = json.dumps({g: (round(gm[g], 4) if isinstance(gm[g], (int, float)) else gm[g])
+                       for g in sorted(gm)}, sort_keys=True)
     return hashlib.sha1(blob.encode()).hexdigest()[:8]
 
 
@@ -58,11 +63,17 @@ def mutate(gm, sigma, p_mut):
         if random.random() < p_mut:
             lo, hi = BOUNDS[g]
             child[g] = clamp(g, child[g] + random.gauss(0, sigma * (hi - lo)))
+    for g in STRUCT:
+        if random.random() < p_mut:
+            child[g] = random.choice(STRUCT_OPTS[g])
     return child
 
 
 def crossover(a, b):
-    return {g: (a[g] if random.random() < 0.5 else b[g]) for g in GENES}
+    child = {g: (a[g] if random.random() < 0.5 else b[g]) for g in GENES}
+    for g in STRUCT:
+        child[g] = a[g] if random.random() < 0.5 else b[g]
+    return child
 
 
 # ---- avaliação: reps*2 partidas via eval_genome.sh (paralelismo bash) --------
@@ -70,8 +81,9 @@ def evaluate(genome, reps, opp, mode, parallel, tag):
     """Saldos de reps*2 partidas do genoma vs opp. Delega o paralelismo ao
     eval_genome.sh (bash) — o padrão comprovado; threads Python + docker se
     mostraram instáveis."""
-    gj = json.dumps({g: round(genome[g], 4) for g in GENES},
-                    separators=(",", ":"))  # compacto: ": " quebraria o YAML
+    payload = {g: round(genome[g], 4) for g in GENES}
+    payload.update({g: genome[g] for g in STRUCT})   # estruturais: string crua
+    gj = json.dumps(payload, separators=(",", ":"))  # compacto: ": " quebraria o YAML
     full_tag = f"{tag}_{genome_id(genome)}"
     try:
         r = subprocess.run(["./eval_genome.sh", gj, str(reps), opp, mode,
@@ -109,6 +121,9 @@ def main():
     ap.add_argument("--genes", default="",
                     help="genes a evoluir (vírgula); vazio = todos os contínuos. "
                          "Os não-listados ficam no default da v9 (params.py)")
+    ap.add_argument("--struct", default="",
+                    help="genes ESTRUTURAIS a evoluir (vírgula): use_velocity, "
+                         "pass_retain, support_mode, far_post_run... (STRUCTURE_OPTIONS)")
     ap.add_argument("--log", default="results/evolve_log.csv")
     ap.add_argument("--champion", default="results/evolve_champion.json")
     a = ap.parse_args()
@@ -116,7 +131,7 @@ def main():
 
     # restringe o conjunto de genes evoluíveis (o resto fica no default da v9,
     # porque o BOT_PARAMS só carrega o subconjunto e params.py completa o resto)
-    global GENES, BASELINE
+    global GENES, BASELINE, STRUCT
     if a.genes:
         req = [g.strip() for g in a.genes.split(",") if g.strip()]
         unknown = [g for g in req if g not in BOUNDS]
@@ -124,6 +139,13 @@ def main():
             print(f"AVISO: genes ignorados (sem bounds): {unknown}", flush=True)
         GENES = [g for g in req if g in BOUNDS]
         BASELINE = {g: float(params.DEFAULTS[g]) for g in GENES}
+    if a.struct:
+        req = [g.strip() for g in a.struct.split(",") if g.strip()]
+        unknown = [g for g in req if g not in STRUCT_OPTS]
+        if unknown:
+            print(f"AVISO: estruturais ignorados (sem opções): {unknown}", flush=True)
+        STRUCT = [g for g in req if g in STRUCT_OPTS]
+        BASELINE.update({g: params.STRUCTURE_DEFAULTS[g] for g in STRUCT})
 
     os.makedirs(os.path.join(HERE, "results"), exist_ok=True)
     t_end = time.time() + a.hours * 3600
@@ -144,7 +166,7 @@ def main():
 
     logf = open(os.path.join(HERE, a.log), "w", newline="")
     logw = csv.writer(logf)
-    logw.writerow(["gen", "gid", "n", "mean_saldo"] + GENES)
+    logw.writerow(["gen", "gid", "n", "mean_saldo"] + GENES + STRUCT)
     logf.flush()
 
     base_gid = genome_id(BASELINE)
@@ -164,7 +186,8 @@ def main():
             saldos = evaluate(gm, a.reps, a.opp, a.mode, a.parallel, f"g{gen}")
             gid = record(gm, saldos, gen)
             logw.writerow([gen, gid, n_of(gid), round(mean(gid), 3)]
-                          + [round(gm[g], 4) for g in GENES])
+                          + [round(gm[g], 4) for g in GENES]
+                          + [gm[g] for g in STRUCT])
             logf.flush()
 
         # ranqueia por média acumulada; campeão precisa de min_n partidas
