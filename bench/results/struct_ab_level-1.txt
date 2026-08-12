@@ -1,0 +1,11 @@
+START 19:31:34
+v9               saldo +1.00 (std 0.95, n=12)  [1, 1, 2, 1, 3, 0, 1, 2, 0, 0, 0, 1]
+carry_touch      saldo +1.08 (std 1.38, n=12)  [2, 0, 1, 1, 0, 1, 1, 1, 0, 5, 1, 0]
+hold_pscarry     saldo +0.25 (std 0.87, n=12)  [0, 1, 0, 1, -1, 0, 0, 1, 2, 0, -1, 0]
+role_zone        saldo +0.83 (std 1.11, n=12)  [0, 1, -1, 1, 1, 0, 2, 3, 0, 2, 1, 0]
+
+--- diferenca vs v9 (baseline saldo +1.00) ---
+  carry_touch      +0.08 (erro padrao 0.48)  nao conclusivo (detectaria >0.95)
+  hold_pscarry     -0.75 (erro padrao 0.37)  PIOR
+  role_zone        -0.17 (erro padrao 0.42)  nao conclusivo (detectaria >0.83)
+[EXIT 0] 21:14:24
