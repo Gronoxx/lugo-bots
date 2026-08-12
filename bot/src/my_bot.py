@@ -87,7 +87,17 @@ class MyBot(lugo4py.Bot, ABC):
                 if angle_target is not None:
                     return [safe_move(inspector, me, angle_target)]
 
-            # 4) fora da zona: conduzir para o gol, desviando da pressão
+            # 4) fora da zona: conduzir para o gol, desviando da pressão.
+            #    carry_mode="touch": tocar a bola pro espaço à frente (self-pass)
+            #    e correr atrás — explora "bola 4x o jogador" para progredir e
+            #    passar por um marcador, SE o ponto for alcançável por mim antes
+            #    dos adversários e a linha do toque estiver livre.
+            if P.get("carry_mode") == "touch":
+                touch = self._touch_target(inspector, goal_center, opponents)
+                if touch is not None:
+                    spd = speed_for_distance(dist(me.position, touch))
+                    return [geo.kick_to(inspector, me, inspector.get_ball(),
+                                        touch, spd)]
             target = self._carry_target(inspector, goal_center, opponents)
             return [safe_move(inspector, me, target)]
 
@@ -342,10 +352,23 @@ class MyBot(lugo4py.Bot, ABC):
             clearance = lane_clearance(me.position, target, opponents)
             mate_pressure = self._pressure_on(mate.position, opponents)
 
+            # bônus de TROCA (switch): passar ao flanco OPOSTO, em espaço, quando
+            # já avançamos (meio/terço ofensivo). Desloca o goleiro (anda 200/turno
+            # vs bola 400) e abre ângulo para a finalização seguinte.
+            switch = 0.0
+            if P["pass_w_switch"] > 0 and advance > -1000 \
+                    and (target.y - MAX_Y / 2) * (me.position.y - MAX_Y / 2) < 0 \
+                    and my_gain < 0.6 * MAX_X:
+                lateral_gain = abs(target.y - MAX_Y / 2) - abs(me.position.y - MAX_Y / 2)
+                near = min((dist(target, o.position) for o in opponents), default=1e9)
+                switch = (P["pass_w_switch"] * max(0.0, lateral_gain)
+                          * min(near, 1700.0) / 1700.0)
+
             score = (advance
                      + P["pass_w_clearance"] * clearance
                      - P["pass_w_mate_pressure"] * mate_pressure
-                     + P["pass_w_pressure_bonus"] * pressure_bonus(pressure))
+                     + P["pass_w_pressure_bonus"] * pressure_bonus(pressure)
+                     + switch)
             if score > best_score:
                 best_score, best = score, (target, speed)
 
@@ -413,6 +436,35 @@ class MyBot(lugo4py.Bot, ABC):
         step = P["carry_step"]
         return point(me.position.x + vx / n2 * step,
                      me.position.y + vy / n2 * step)
+
+    def _touch_target(self, inspector, goal_center, opponents):
+        """Ponto à frente para TOCAR a bola (self-pass) e correr atrás: espaço
+        livre num cone rumo ao gol, a `carry_step`, alcançável por mim antes de
+        qualquer adversário e com a linha do toque livre. None se nada seguro."""
+        me = inspector.get_me()
+        mx, my = me.position.x, me.position.y
+        base = math.atan2(goal_center.y - my, goal_center.x - mx)
+        step = P["carry_step"]
+        my_turns = turns_for_player(step)
+        opp_list = list(opponents)
+        best, best_score = None, -1e18
+        for deg in range(-40, 41, 10):
+            a = base + math.radians(deg)
+            cand = point(mx + math.cos(a) * step, my + math.sin(a) * step)
+            # eu chego ao ponto antes de qualquer adversário?
+            if any(turns_for_player(dist(o.position, cand)) <= my_turns + 1.0
+                   for o in opp_list):
+                continue
+            spd = speed_for_distance(dist(me.position, cand))
+            # a linha do toque está livre (o toque não é interceptado)?
+            if opponent_can_intercept(me.position, cand, opp_list, spd):
+                continue
+            near = min((dist(cand, o.position) for o in opp_list), default=1e9)
+            advance = dist(me.position, goal_center) - dist(cand, goal_center)
+            score = min(near, 2000.0) + 0.6 * advance
+            if score > best_score:
+                best_score, best = score, cand
+        return best
 
     def _support_offer(self, inspector, holder, fallback):
         """Posição de apoio que abre linha de passe para o portador."""

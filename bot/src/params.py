@@ -44,7 +44,10 @@ DEFAULTS = {
     "pass_w_clearance": 0.5,
     "pass_w_mate_pressure": 1.5,
     "pass_w_pressure_bonus": 900.0,
-    "pass_margin": 500.0,             # folga mínima da linha de passe
+    "pass_margin": 500.0,
+    # bônus de TROCA (switch): passar ao flanco OPOSTO em espaço, na área de
+    # ataque, desloca o goleiro e abre ângulo. Default 0 = v9 (item 4 do plano).
+    "pass_w_switch": 0.0,             # folga mínima da linha de passe
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -127,6 +130,7 @@ BOUNDS = {
     "pass_w_mate_pressure": (0.0, 6.0),
     "pass_w_pressure_bonus": (0.0, 4000.0),
     "pass_margin": (150.0, 1500.0),
+    "pass_w_switch": (0.0, 5.0),
     "carry_repulsion_radius": (500.0, 5000.0),
     "carry_repulsion_weight": (0.0, 4.0),
     "carry_step": (400.0, 4000.0),

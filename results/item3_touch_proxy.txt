@@ -1,0 +1,10 @@
+Item 3 - conducao de toque (carry_mode="touch") vs level-1 (proxy densa)
+v9 (fin,40) vs touch (tc,30):
+  chances boas (taxa):  0.38 -> 0.42   (+10%, cria mais chance)
+  posses-perigo/jogo:   5.4  -> 6.3    (chega ao perigo mais vezes)
+  best_slack medio:     -505 -> -482
+  shot_slack medio:     +56  -> +183
+  fusivel/jogo:         754  -> 716    (menos perigo sofrido)
+  gols pro/jogo:        0.70 -> 0.93   (+0.23, borderline)
+5 metricas densas alinhadas a favor do touch -> PRIMEIRO ganho real (criacao de
+chance). Confirmando em gols com A/B pareado (v9/touch/combo).

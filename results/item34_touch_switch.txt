@@ -1,0 +1,6 @@
+Itens 3-4 vs level-1 (A/B gols pareado, rush, n=16):
+  v9:                 +0.75 saldo
+  touch:              +1.12 saldo  (+0.38, SE 0.37) -> MELHOR (3 sinais: A/B, proxy, 5 metricas densas)
+  combo(touch+switch@2.0): +0.75  (switch CANCELA o ganho do touch -> switch@2.0 PIORA)
+Decisao: touch = ganho real modesto (candidato do pacote). switch off (precisa tuning/abandono).
+Default segue v9 ate a confirmacao final do pacote (item 6 do plano).
