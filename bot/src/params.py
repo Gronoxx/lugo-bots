@@ -34,6 +34,9 @@ DEFAULTS = {
     "shot_min_gap": 1300.0,
     # xG mínimo para autorizar o chute quando shot_gate="xg" (modelo finishing.py)
     "shot_min_xg": 0.10,
+    # gate TEMPORAL (shot_gate="slack"): slack = |alvo.y-gk.y| - (560+gk_reach_speed*t)
+    "shot_min_slack": 0.0,     # autoriza o chute se slack > isto (calibrado: >0)
+    "gk_reach_speed": 75.0,    # calibrado (AUC 0.87 vs gol). NÃO usar 200 (erro v6/v8)
 
     # passe
     "pass_min_dist": 800.0,
@@ -116,6 +119,8 @@ BOUNDS = {
     "shot_lateral": (0.0, 3500.0),
     "shot_min_gap": (0.0, 2600.0),
     "shot_min_xg": (0.0, 0.6),
+    "shot_min_slack": (-500.0, 1500.0),
+    "gk_reach_speed": (0.0, 200.0),
     "pass_min_dist": (300.0, 3000.0),
     "pass_speed_mult": (1.0, 2.0),
     "pass_w_clearance": (0.0, 3.0),
@@ -151,7 +156,7 @@ STRUCTURE_OPTIONS = {
     "marking_mode": ["cover", "man"],
     "keeper_mode": ["line", "sweeper"],
     "angle_seek": ["off", "on"],
-    "shot_gate": ["threshold", "xg"],
+    "shot_gate": ["threshold", "xg", "slack"],
 }
 
 

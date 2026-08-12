@@ -260,7 +260,18 @@ class MyBot(lugo4py.Bot, ABC):
             #   > 1800  -> 45%
             # Chutar com folga pequena é desperdício; exigir folga demais faz o
             # bot nunca chutar. O limiar é um gene, para a evolução ajustá-lo.
-            if P.get("shot_gate") == "xg" and fin.available():
+            if P.get("shot_gate") == "slack" and gk is not None:
+                # gate TEMPORAL calibrado: folga do alvo ao goleiro MENOS o quanto
+                # ele cobre em t turnos (560 + gk_reach_speed·t). gk_reach_speed=75
+                # calibrado (AUC 0.87 vs gol; slack>0 converte 43%, <=0 converte 0%).
+                t_ball = turns_for_ball(BALL_MAX_SPEED, d)
+                if t_ball == math.inf:
+                    continue
+                slack = abs(target.y - gk.position.y) - (560.0 + P["gk_reach_speed"] * t_ball)
+                if slack <= P["shot_min_slack"]:
+                    continue
+                score = slack
+            elif P.get("shot_gate") == "xg" and fin.available():
                 # modelo xG: mesmas features do treino (reta bola->alvo).
                 # dist_line = d (alvo na linha do gol); ycross = target.y.
                 ux, uy = target.x - me.position.x, target.y - me.position.y

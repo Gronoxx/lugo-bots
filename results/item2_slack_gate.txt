@@ -1,0 +1,10 @@
+Item 2 - gate temporal shot_gate="slack" vs level-1 (proxy densa)
+baseline v9 (fin, 40 replays) vs slack@0 (s0, 30 replays):
+  shot_slack medio:      +56  -> +390   (gate funciona)
+  frac chutes slack>0:   0.51 -> 0.95
+  chances boas (taxa):   0.38 -> 0.44   (~igual; gate nao cria chance)
+  fusivel/jogo:          754  -> 760    (~igual)
+  gols pro/jogo:         0.70 -> 0.53   (neutro; dif 0.17 < 1 desvio, nao-pareado)
+VEREDITO: gate funciona (chutes muito melhores) mas NAO move gols -> gargalo e
+criar chance, nao selecionar chute. Default fica threshold; slack e gene opcional.
+A metrica slack (item 1) e o ganho duravel, guia os itens 3-4.
