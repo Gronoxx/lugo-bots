@@ -1,0 +1,24 @@
+{
+  "gid": "a94370e4",
+  "mean_saldo": 1.25,
+  "n": 24,
+  "gen": 9,
+  "baseline_mean": 1.25,
+  "baseline_n": 24,
+  "genome": {
+    "shot_arrival_min": 0.0,
+    "pass_w_intercept": 0.0,
+    "pass_w_overmark": 0.0,
+    "pass_mark_threshold": 0.0,
+    "pass_backward_floor": 20000.0,
+    "pass_retain_backmax": 3000.0,
+    "pass_retain_advance_w": 0.8,
+    "support_advance": 2500.0,
+    "support_channel_width": 1800.0,
+    "support_off_w_press": 1500.0,
+    "use_velocity": "off",
+    "pass_retain": "off",
+    "support_mode": "v9",
+    "far_post_run": "off"
+  }
+}
