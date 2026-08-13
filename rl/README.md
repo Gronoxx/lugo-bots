@@ -45,6 +45,31 @@ genes ~4× mais rápido. Isso esbarra em dois pontos de design:
 O A/B heurístico genoma-vs-genoma rápido fica pendente do refactor de params
 por-instância (em arquivos que o usuário está editando).
 
-## Próximo (conforme o plano)
-- Validação distribucional sim-vs-docker quando o `my_bot.py` estabilizar (Etapa 1, portão).
-- Etapa 2: reescrever `step` em JAX (jit+vmap+scan) para GPU; gate JAX↔escalar.
+## AMBIENTE PARA RL — PRONTO (Etapas 0, 2, 3)
+
+- **Etapa 0** — venv `.venv-rl` (Python 3.12 via `uv`) + `jax[cuda12]`/flax/optax.
+  JAX 0.11 vê a GPU (GTX 1660S). Requisitos em `rl/requirements.txt`.
+- **Etapa 2** — `rl/jax/step.py`: sim vetorizado em JAX. Física IDÊNTICA ao escalar
+  (0,00d); regras discretas OK; **45M env-steps/s (~7500 partidas/s)** na GPU.
+- **Etapa 3** — `rl/envs/`: env multiagente. `obs.py` (egocêntrica canonizada 109 +
+  global 96, CTDE), `actions.py` (MultiDiscrete [17,17,2,2]), `rewards.py` (gol +
+  shaping potential-based), `lugo_env.py` (`reset`/`step` jit, auto-reset).
+- **Treinável comprovado** — `rl/train/networks.py` (ator-crítico flax) +
+  `rl/train/smoke_ppo.py` (A2C: crítico reduz o erro em 40 updates/4,3s na GPU).
+
+Uso mínimo (no `.venv-rl`):
+```python
+import sys; sys.path[:0]=['rl/envs','rl/jax','rl/train']
+import lugo_env as E
+reset, step = E.make_env(batch=1024, episode_len=6000)
+state, (agent_obs, global_obs) = reset()        # obs (B,2,11,109) e (B,2,96)
+state, obs, reward, done, info = step(state, action)   # action (B,2,11,4) int
+```
+
+## Próximo (fora do "ambiente")
+- **Etapa 4 — treino self-play MAPPO**: pool de oponentes (baselines JAX-nativas +
+  snapshots), currículo 3v3→11v11, sobre `rl/train/` (o `smoke_ppo` é o esqueleto).
+- **Etapa 5 — deploy + sim2real**: `policy(inspector)→Order` no servidor real
+  (docker) vs level-1/v9; calibrar a resolução de catch (nuance da Etapa 2).
+- **Fidelidade**: validação distribucional sim-vs-docker quando o `my_bot.py`
+  estabilizar (usa a ponte da Etapa 1).
