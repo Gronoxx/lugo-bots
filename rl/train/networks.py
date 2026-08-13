@@ -15,22 +15,24 @@ from flax import linen as nn
 
 class Actor(nn.Module):
     nvec: tuple = (17, 17, 2, 2)
-    hidden: int = 128
+    hidden: int = 256
 
     @nn.compact
     def __call__(self, obs):
-        x = nn.tanh(nn.Dense(self.hidden)(obs))
-        x = nn.tanh(nn.Dense(self.hidden)(x))
+        x = nn.relu(nn.Dense(self.hidden)(obs))
+        x = nn.relu(nn.Dense(self.hidden)(x))
+        x = nn.relu(nn.Dense(self.hidden)(x))
         return [nn.Dense(n)(x) for n in self.nvec]   # lista de logits (...,n)
 
 
 class Critic(nn.Module):
-    hidden: int = 128
+    hidden: int = 256
 
     @nn.compact
     def __call__(self, gobs):
-        x = nn.tanh(nn.Dense(self.hidden)(gobs))
-        x = nn.tanh(nn.Dense(self.hidden)(x))
+        x = nn.relu(nn.Dense(self.hidden)(gobs))
+        x = nn.relu(nn.Dense(self.hidden)(x))
+        x = nn.relu(nn.Dense(self.hidden)(x))
         return nn.Dense(1)(x)[..., 0]                # valor (...)
 
 

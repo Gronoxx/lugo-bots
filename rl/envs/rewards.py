@@ -14,6 +14,7 @@ import step as J
 
 W_ADV = 0.20     # peso da PROXIMIDADE da bola ao gol atacado (potencial denso)
 W_POS = 0.05     # peso da posse
+W_BALL = 0.10    # peso da proximidade do time À BOLA (incentiva perseguir/ganhar)
 
 
 def _potential(state):
@@ -27,7 +28,10 @@ def _potential(state):
     held = state.holder_side >= 0
     poss = jax.nn.one_hot(jnp.clip(state.holder_side, 0, 1), 2, dtype=jnp.float32) \
         * held[:, None].astype(jnp.float32)
-    return W_ADV * prox + W_POS * poss
+    # proximidade do time à bola (o jogador mais perto de cada lado)
+    dball = jnp.sqrt(((state.pos - state.ball_pos[:, None, None, :]) ** 2).sum(-1))  # (B,2,11)
+    near = 1.0 - jnp.min(dball, axis=2) / J.MAX_X                                   # (B,2)
+    return W_ADV * prox + W_POS * poss + W_BALL * near
 
 
 def compute_reward(prev, state, gamma=0.99):

@@ -57,7 +57,9 @@ def evaluate(home, away, n_games, episode_len, sample=True):
                 aH, _ = sample_action(actor.apply(home, aobs[:, J.HOME]), kh)
             else:
                 aH = _greedy(home, aobs[:, J.HOME])
-            if away == "chase":
+            if away == "static":
+                aA = jnp.zeros_like(aH)
+            elif away == "chase":
                 aA = chase_action(state)[:, J.AWAY]
             elif sample:
                 aA, _ = sample_action(actor.apply(away, aobs[:, J.AWAY]), ka)
@@ -82,7 +84,7 @@ def evaluate(home, away, n_games, episode_len, sample=True):
 if __name__ == "__main__":
     hp = pickle.load(open(sys.argv[1], "rb"))
     aw = sys.argv[2] if len(sys.argv) > 2 else "chase"
-    away = "chase" if aw == "chase" else pickle.load(open(aw, "rb"))
+    away = aw if aw in ("chase", "static") else pickle.load(open(aw, "rb"))
     n = int(sys.argv[3]) if len(sys.argv) > 3 else 64
     L = int(sys.argv[4]) if len(sys.argv) > 4 else 6000
     evaluate(hp, away, n, L)

@@ -44,7 +44,7 @@ def _act(params, aobs_side, key):
     return sample_action(actor.apply(params, aobs_side), key)
 
 
-def make_rollout(env_step):
+def make_rollout(env_step, opp_static=False):
     @jax.jit
     def rollout(lp, cp, opp, state, obs, key):
         def stepf(carry, _):
@@ -52,7 +52,10 @@ def make_rollout(env_step):
             aobs, gobs = obs
             key, kH, kA = jax.random.split(key, 3)
             aH, lpH = _act(lp, aobs[:, J.HOME], kH)
-            aA, _ = _act(opp, aobs[:, J.AWAY], kA)
+            if opp_static:
+                aA = jnp.zeros_like(aH)
+            else:
+                aA, _ = _act(opp, aobs[:, J.AWAY], kA)
             val = critic.apply(cp, gobs[:, J.HOME])
             action = jnp.stack([aH, aA], axis=1)
             s2, obs2, reward, done, _ = env_step(state, action)
@@ -121,9 +124,9 @@ def update(lp, cp, ostate, traj, adv, ret, key):
     return lp, cp, ostate
 
 
-def main(updates, use_bc, episode_len):
+def main(updates, use_bc, episode_len, opp="selfplay"):
     reset_env, env_step = E.make_env(B, episode_len=episode_len)
-    rollout = make_rollout(env_step)
+    rollout = make_rollout(env_step, opp_static=(opp == "static"))
     key = jax.random.PRNGKey(0)
     state, obs = reset_env()
     lp = actor.init(key, obs[0][:, J.HOME])
@@ -161,5 +164,6 @@ if __name__ == "__main__":
     ap.add_argument("--updates", type=int, default=200)
     ap.add_argument("--bc", action="store_true")
     ap.add_argument("--episode-len", type=int, default=2000)
+    ap.add_argument("--opp", default="selfplay", choices=["selfplay", "static"])
     a = ap.parse_args()
-    main(a.updates, a.bc, a.episode_len)
+    main(a.updates, a.bc, a.episode_len, a.opp)
