@@ -25,3 +25,4 @@ videos/
 # macOS
 .DS_Store
 Lugo.zip
+.venv-rl
