@@ -18,7 +18,7 @@ import numpy as np
 
 import lugo_env as E
 import step as J
-from networks import Actor
+from networks import Actor, sample_action
 
 actor = Actor(nvec=tuple(E.META["action_nvec"]))
 
@@ -43,32 +43,39 @@ def _greedy(params, aobs_side):
     return jnp.stack([lg.argmax(-1) for lg in logits], -1)      # (B,11,4)
 
 
-def evaluate(home, away, n_games, episode_len):
+def evaluate(home, away, n_games, episode_len, sample=True):
     reset, step = E.make_env(n_games, episode_len=episode_len)
     state, obs = reset()
 
     @jax.jit
-    def run(state, obs):
+    def run(state, obs, key):
         def body(carry, _):
-            state, obs = carry
+            state, obs, key = carry
             aobs, _ = obs
-            aH = _greedy(home, aobs[:, J.HOME])
+            key, kh, ka = jax.random.split(key, 3)
+            if sample:
+                aH, _ = sample_action(actor.apply(home, aobs[:, J.HOME]), kh)
+            else:
+                aH = _greedy(home, aobs[:, J.HOME])
             if away == "chase":
-                act = chase_action(state)
-                aA = act[:, J.AWAY]
+                aA = chase_action(state)[:, J.AWAY]
+            elif sample:
+                aA, _ = sample_action(actor.apply(away, aobs[:, J.AWAY]), ka)
             else:
                 aA = _greedy(away, aobs[:, J.AWAY])
-            action = jnp.stack([aH, aA], 1)
-            state, obs, _, _, _ = step(state, action)
-            return (state, obs), None
-        (state, obs), _ = jax.lax.scan(body, (state, obs), None, length=episode_len)
-        return state
-    final = run(state, obs)
-    sc = np.asarray(final.score)                               # (n_games,2)
+            state, obs, _, _, _ = step(state, jnp.stack([aH, aA], 1))
+            terr = (state.ball_pos[:, 0] > J.MAX_X / 2).astype(jnp.float32)   # bola no campo do AWAY
+            poss = (state.holder_side == J.HOME).astype(jnp.float32)
+            return (state, obs, key), (terr, poss)
+        (state, obs, key), (terr, poss) = jax.lax.scan(
+            body, (state, obs, key), None, length=episode_len)
+        return state, terr.mean(), poss.mean()
+    final, terr, poss = run(state, obs, jax.random.PRNGKey(0))
+    sc = np.asarray(final.score)
     diff = sc[:, J.HOME] - sc[:, J.AWAY]
-    wins = (diff > 0).mean(); draws = (diff == 0).mean()
     print(f"HOME {sc[:,0].mean():.2f} x {sc[:,1].mean():.2f} AWAY | saldo {diff.mean():+.2f} "
-          f"| vitórias {wins*100:.0f}% empates {draws*100:.0f}% (n={n_games}, {episode_len}t)")
+          f"| território(HOME) {float(terr)*100:.0f}% | posse(HOME) {float(poss)*100:.0f}% "
+          f"| vit {float((diff>0).mean())*100:.0f}% (n={n_games},{episode_len}t)")
     return diff.mean()
 
 

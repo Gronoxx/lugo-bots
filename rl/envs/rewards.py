@@ -12,18 +12,22 @@ import jax.numpy as jnp
 
 import step as J
 
-W_ADV = 0.05     # peso do avanço da bola no potencial
-W_POS = 0.02     # peso da posse
+W_ADV = 0.20     # peso da PROXIMIDADE da bola ao gol atacado (potencial denso)
+W_POS = 0.05     # peso da posse
 
 
 def _potential(state):
-    """Φ por lado (B, 2)."""
-    bx = state.ball_pos[:, 0] / J.MAX_X                     # 0..1 (x da bola)
-    adv = jnp.stack([bx, 1.0 - bx], axis=-1)               # HOME quer x alto; AWAY baixo
+    """Φ por lado (B, 2): proximidade da bola ao gol ATACADO + posse.
+    Puxa a bola rumo ao gol (dá gradiente denso para avançar e finalizar)."""
+    bx, by = state.ball_pos[:, 0], state.ball_pos[:, 1]
+    # distância da bola ao centro do gol atacado por cada lado (HOME->x=MAX_X)
+    d_home = jnp.sqrt((bx - J.MAX_X) ** 2 + (by - J.MAX_Y / 2) ** 2) / J.MAX_X
+    d_away = jnp.sqrt(bx ** 2 + (by - J.MAX_Y / 2) ** 2) / J.MAX_X
+    prox = jnp.stack([1.0 - d_home, 1.0 - d_away], axis=-1)   # perto do gol = alto
     held = state.holder_side >= 0
     poss = jax.nn.one_hot(jnp.clip(state.holder_side, 0, 1), 2, dtype=jnp.float32) \
         * held[:, None].astype(jnp.float32)
-    return W_ADV * adv + W_POS * poss
+    return W_ADV * prox + W_POS * poss
 
 
 def compute_reward(prev, state, gamma=0.99):
