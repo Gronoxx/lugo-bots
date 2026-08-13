@@ -371,7 +371,10 @@ def lead_target(receiver, turns_ahead: float):
 # depende da distância e da velocidade. Como está na biblioteca, todo bot Python
 # da competição tem esse defeito.
 #
-# Física real do servidor (server.proto, message Kick):
+# Modelo de física do chute (INFERIDO pelo time — NÃO é do server.proto: a
+# message Kick só carrega `velocity`. A lógica real vive no servidor Go
+# (github.com/lugobots/server), ausente aqui. O cap de 400 é confirmável em
+# replay; o fator de ângulo e o termo de soma NÃO são isoláveis sem as ordens):
 #   1. o chute enviado sofre redução por ângulo com a direção do jogador:
 #        fator = 0.5 + 0.5*((180 - ang)/180)      (100% a 0°, 50% a 180°)
 #   2. o resultado é SOMADO à velocidade atual da bola

@@ -30,7 +30,8 @@ GOALKEEPER_JUMP_SPEED = 2 * PLAYER_MAX_SPEED  # 200
 GOALKEEPER_NUMBER = 1
 
 SHOT_CLOCK_TIME = 300
-GAME_TURNS = 1200
+GAME_TURNS = 6000   # corrigido: config real game_duration=6000 e maior turn observado=6000
+                    # (era 1200, errado por 5x). 6000/20fps = 300s = 5min.
 FPS = 20
 
 # raio efetivo de contato bola-jogador
