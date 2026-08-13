@@ -36,6 +36,12 @@ BALL_MIN_SPEED = 2.0
 BALL_DECEL = 10.0
 BALL_TIME_IN_GOAL_ZONE = 40
 TOUCH_RADIUS = (PLAYER_SIZE + BALL_SIZE) / 2   # 300
+# raio de pegada do GOLEIRO: (GOALKEEPER_SIZE 920 + BALL_SIZE 200)/2 = 560, o
+# mesmo GOALKEEPER_HALF_EXTENT que o bot assume. Medido: pré-captura do goleiro
+# mediana 525d (>> jogador de linha ~300). Sem isto o GK pega de menos -> gols demais.
+GK_CATCH_RADIUS = 560.0
+BALL_HOLD_OFFSET = PLAYER_SIZE / 2             # 200 — a bola fica ~200d à frente
+                                               # do dono (medido em replay: mediana 200d)
 
 GOALKEEPER_JUMP_SPEED = 200.0
 GOALKEEPER_JUMP_DURATION = 3
@@ -145,11 +151,9 @@ def step(s: State, orders_home, orders_away) -> State:
                     _reset_positions(s)
                     return s
 
-    # 3) a bola presa acompanha quem a segura
+    # 3) a bola presa acompanha quem a segura (~200d à frente)
     if s.holder is not None:
-        side, i = s.holder
-        s.ball_pos[:] = s.pos[side, i]
-        s.ball_vel[:] = s.vel[side, i]
+        _glue_ball(s)
 
     # 4) gol?
     goal = _check_goal(s)
@@ -233,9 +237,15 @@ def _apply_move(s: State, side, i, o):
 
 def _advance_player(s: State, side, i):
     s.pos[side, i] += s.vel[side, i]
-    s.pos[side, i, 0] = min(max(s.pos[side, i, 0], 0), MAX_X)
     s.pos[side, i, 1] = min(max(s.pos[side, i, 1], 0), MAX_Y)
-    # zona do gol adversário é proibida para jogadores de linha
+    if i == 0:
+        # goleiro PRESO à linha do próprio gol (medido: x fixo em {0, MAX_X},
+        # min=med=max). Move-se só em y (≤100/turno, 200 no pulo).
+        s.pos[side, i, 0] = 0.0 if side == HOME else float(MAX_X)
+        return
+    s.pos[side, i, 0] = min(max(s.pos[side, i, 0], 0), MAX_X)
+    # zona do gol adversário é proibida para jogadores de linha (FIEL: medido,
+    # jogadores de linha entram <1400 do gol adversário em 0,0% dos frames)
     if i != 0:
         goal_x = MAX_X if side == HOME else 0
         d = math.hypot(s.pos[side, i, 0] - goal_x,
@@ -246,17 +256,47 @@ def _advance_player(s: State, side, i):
             s.pos[side, i, 1] = MAX_Y / 2 + (s.pos[side, i, 1] - MAX_Y / 2) * scale
 
 
+def _glue_ball(s: State):
+    """Cola a bola ~200d À FRENTE do dono (na direção do movimento; se parado,
+    rumo ao gol atacado). Medido: dist bola↔dono em posse = 200d."""
+    side, i = s.holder
+    v = s.vel[side, i]
+    sp = math.hypot(v[0], v[1])
+    if sp > 1e-6:
+        dx, dy = v[0] / sp, v[1] / sp
+    else:
+        gx = float(MAX_X) if side == HOME else 0.0
+        dx, dy = gx - s.pos[side, i, 0], MAX_Y / 2 - s.pos[side, i, 1]
+        n = math.hypot(dx, dy) or 1.0
+        dx, dy = dx / n, dy / n
+    s.ball_pos[0] = s.pos[side, i, 0] + dx * BALL_HOLD_OFFSET
+    s.ball_pos[1] = s.pos[side, i, 1] + dy * BALL_HOLD_OFFSET
+    s.ball_vel[:] = s.vel[side, i]
+
+
 def _try_catch(s: State, side, i):
-    if s.holder is not None:
-        return
+    """Pega/rouba a bola se estiver no raio de toque. Roubo do adversário só se
+    eu estiver MAIS PERTO da bola que o dono atual (regra física, independente
+    da ordem de processamento — reduz o viés HOME-antes-de-AWAY). Não tomo de um
+    companheiro. Medido: roubos ocorrem (mediana 224d 1 turno antes)."""
     d = math.hypot(s.ball_pos[0] - s.pos[side, i, 0],
                    s.ball_pos[1] - s.pos[side, i, 1])
-    if d <= TOUCH_RADIUS:
-        prev = s.holder
-        s.holder = (side, i)
-        if prev is None or prev[0] != side:
-            s.shot_clock_side = side
-            s.shot_clock = SHOT_CLOCK_TIME
+    radius = GK_CATCH_RADIUS if i == 0 else TOUCH_RADIUS
+    if d > radius:
+        return
+    prev = s.holder
+    if prev is not None:
+        ps, pi = prev
+        if ps == side:
+            return                                   # meu time já tem a bola
+        dh = math.hypot(s.ball_pos[0] - s.pos[ps, pi, 0],
+                        s.ball_pos[1] - s.pos[ps, pi, 1])
+        if d >= dh:
+            return                                   # não estou mais perto -> sem roubo
+    s.holder = (side, i)
+    if prev is None or prev[0] != side:
+        s.shot_clock_side = side
+        s.shot_clock = SHOT_CLOCK_TIME
 
 
 def _apply_kick(s: State, side, i, k):
