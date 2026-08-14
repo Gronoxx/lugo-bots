@@ -57,7 +57,37 @@ turno ~83. Logo o **portão "0 mismatches" (cmp de replay) é INVÁLIDO** — o
 - **Efeito (gene on vs off)** → só por ESTATÍSTICA sobre muitas partidas (proxy
   densa); o não-determinismo é mais uma fonte de ruído.
 
-## Resultados de validação
+## ⭐ RÉGUA FORTE via SELF-PLAY (o resultado que importa)
+Não há bot forte EXTERNO local, mas o NOSSO bot (Fase A) É forte. `bench/ab_selfplay.py`
+põe `mybot:qp` vs `mybot:qp` head-to-head, um lado com o bundle "quando passar", o
+outro com a base Fase A — mesma imagem, só os genes mudam. Disputa competitiva ⇒
+**baixa variância** (se≈0,33 em n=24) ⇒ sinal LIMPO, ao contrário dos A/Bs vs
+oponente fraco (que são só ruído).
+
+**Veredito (combo = status + planejador-gated + control): PERDE para a base Fase A
+por −2,58 ± 0,33 gols/jogo (n=24, z=−7,72, SIGNIFICATIVO). 0 vitórias / 1 empate /
+23 derrotas.** Ou seja, o "quando passar" COMO IMPLEMENTADO **piora** o bot mesmo
+vs oponente forte: passar mais cria turnovers e abre mão do tempo de drible que a
+base (forte dribladora) usa para vencer. Consistente com o histórico do projeto
+(a baseline v9/Fase A é bem afinada e difícil de bater).
+
+**Decomposição por componente (self-play, n=20 cada):**
+| variante | saldo/jogo | V/E/D | veredito |
+|---|---|---|---|
+| controle base×base | −0,15 ± 0,17 (n.s.) | 1/17/2 | régua válida, sem viés de lado |
+| **status sozinho (Comp 1)** | **+0,40 ± 0,18 (z=2,18 SIG)** | 6/13/1 | **GANHA** ✓ |
+| planejador sozinho (Comp 2) | −2,65 ± 0,32 (z=−8,32 SIG) | 0/1/19 | PERDE muito ✗ |
+
+**Conclusão acionável:**
+- **Componente 1 (status/escape) É UM GANHO** — "passar para evitar perda" bate a
+  base Fase A mesmo vs oponente forte (+0,40 gol/jogo, significativo). Candidato a
+  ligar (`pass_status_mode="on"`), pendente de confirmação na plataforma.
+- **Componente 2 (planejador) PREJUDICA** (−2,65) — para este bot forte-driblador,
+  passar construtivo proativo é downgrade. **Manter OFF.** (Código fica no repo
+  como base para trabalho futuro / oponentes onde o drible falhe.)
+- **Componente 3**: avaliar por self-play (raramente dispara). [ver §tuning]
+
+## Resultados de validação (vs oponente fraco — apenas RUÍDO, registrados p/ completude)
 - **Etapa 0 (ablação `exec_speed`, `bench/ab_ablation_exec.py`)**: desligar exec_speed
   piora completude (99,5%→97,7%, z=−5,92) E progressão → **first-touch é REAL** →
   planejador precisa ser control-aware (decidiu a complexidade do Comp. 2).
