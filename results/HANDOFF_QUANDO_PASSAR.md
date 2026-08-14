@@ -80,8 +80,9 @@ base (forte dribladora) usa para vencer. Consistente com o histórico do projeto
 
 **Conclusão acionável:**
 - **Componente 1 (status/escape) É UM GANHO** — "passar para evitar perda" bate a
-  base Fase A mesmo vs oponente forte (+0,40 gol/jogo, significativo). Candidato a
-  ligar (`pass_status_mode="on"`), pendente de confirmação na plataforma.
+  base Fase A mesmo vs oponente forte. Confirmado em n=40: **+0,28 ± 0,09 gol/jogo
+  (z=2,91, SIG), 10V/29E/1D**. Candidato a ligar (`pass_status_mode="on"`),
+  pendente de confirmação na plataforma.
 - **Componente 2 (planejador) PREJUDICA** (−2,65) — para este bot forte-driblador,
   passar construtivo proativo é downgrade. **Manter OFF.** (Código fica no repo
   como base para trabalho futuro / oponentes onde o drible falhe.)
@@ -107,6 +108,32 @@ base (forte dribladora) usa para vencer. Consistente com o histórico do projeto
   neutro/levemente-positivo (não-significativo em n=12; alta real é aposta para a
   plataforma). Nota: composição de posse é NÃO-confiável sob goleada (45×0 vira
   "1 posse" na segmentação) → usar GOLS como métrica sob blowout.
+
+## ⭐ RECOMENDAÇÃO DE PRODUÇÃO
+Após o veredito da régua forte (self-play):
+- **LIGAR `pass_status_mode="on"`** (Componente 1). Ganho pequeno mas real e robusto
+  (+0,2 a +0,4 gol/jogo vs a base Fase A, significativo; 0–1 derrotas em 20 em toda
+  variante testada). Genes default servem (não achei ajuste claramente melhor em
+  n=20 — não sobre-ajustar ao self-play, risco de overfit ao nosso próprio estilo).
+- **`pass_lookahead="off"`, `pass_control="off"`** (Componente 2 / planejador):
+  perde −2,5 gol/jogo mesmo no ajuste mais conservador. Fica no repo p/ trabalho
+  futuro (oponentes onde o drible falhe / off-ball), mas OFF.
+- **`game_state_mode="off"`** (Componente 3): ~neutro/levemente negativo em
+  self-play; on-path funciona (smoke ok). OFF por ora; reavaliar na plataforma
+  (onde placares não são equilibrados como no self-play).
+- **Genoma de produção sugerido** (sobre a Fase A):
+  `{"pass_endpoint_race":"on","pass_exec_speed":"on","pass_touch_lead":"on","pass_status_mode":"on"}`
+- **Confirmar na plataforma** vs bots fortes reais antes de fixar o default.
+
+### Ajuste (tuning) por self-play — resumo (n=20/braço, saldo vs base Fase A)
+| variante | saldo | veredito |
+|---|---|---|
+| planejador conservador (trigger=1) | −2,45 (SIG) | planejador irrecuperável |
+| status attention=4 | +0,20 (n.s.) | ok |
+| status attention=2 (perigo-only) | +0,20 (SIG) | ok |
+| status + recv_free=800 | +0,20 (SIG) | não melhora |
+| status + game_state | +0,05 (n.s.) | game_state não ajuda |
+| **status default (n=40)** | **+0,28 ± 0,09 (z=2,91 SIG), 10V/29E/1D** | **WINNER** |
 
 ## Como testar (comandos)
 ```
