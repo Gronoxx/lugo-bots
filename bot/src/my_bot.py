@@ -18,6 +18,7 @@ import lugo4py
 import geometry as geo
 import tactics as tac
 import finishing as fin
+import planner
 from params import P
 from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
                       GOAL_MIN_Y, MAX_X, MAX_Y, PLAYER_SPEED, dist,
@@ -358,8 +359,30 @@ class MyBot(lugo4py.Bot, ABC):
         mates = [p for p in inspector.get_my_team_players()
                  if p.number != self.number]
 
+        # Componente 2: planejador NAO-GULOSO. Se acionado e achar uma cadeia de
+        # passe segura de valor > segurar, decide o passe imediato (MPC: so a 1a
+        # perna). off = nunca chamado (=v9). Se nao achar, cai no fluxo abaixo
+        # (guloso + escape do Componente 1).
+        if P.get("pass_lookahead") != "off":
+            plan = planner.plan_pass(me, inspector.get_ball(), mates, opponents,
+                                     goal_center, inspector.get_opponent_goalkeeper(),
+                                     USE_VELOCITY)
+            if plan is not None:
+                tgt, spd = plan
+                return geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)
+
         my_gain = dist(me.position, goal_center)
         pressure = self._pressure_on(me.position, opponents)
+
+        # Componente 1 ("quando passar"): status do portador (livre/atencao/
+        # perigo) pela banda de turnos ate o adversario mais proximo. off => v9.
+        status_on = P.get("pass_status_mode") == "on"
+        holder_state = "livre"
+        opp_gk = None
+        if status_on:
+            opp_gk = inspector.get_opponent_goalkeeper()
+            holder_state, _ = self._player_status(me.position, opponents,
+                                                  opp_gk, goal_center)
 
         under_pressure = False
         if P.get("pass_retain") == "on":
@@ -367,9 +390,17 @@ class MyBot(lugo4py.Bot, ABC):
                            for o in opponents), default=math.inf)
             under_pressure = (pressure >= P["pass_retain_pressure"]
                               or t_press <= P["pass_retain_turns"])
+        # atencao/perigo tambem ligam a retencao (escape antes do desarme): o
+        # passe de escape leva chute+voo, entao esperar so "perigo" pode ser tarde.
+        if status_on and holder_state in ("atencao", "perigo"):
+            under_pressure = True
 
         best = None
         best_score = P["pass_min_score"]        # v9: 0.0
+        if status_on:                            # barra de aceite por estado
+            best_score = {"livre": P["pass_min_score_free"],
+                          "atencao": P["pass_min_score_attention"],
+                          "perigo": P["pass_min_score_danger"]}[holder_state]
         retain = None
         retain_score = -1e18
 
@@ -447,6 +478,17 @@ class MyBot(lugo4py.Bot, ABC):
                 switch = (P["pass_w_switch"] * max(0.0, lateral_gain)
                           * min(near, 1700.0) / 1700.0)
 
+            # bonus/penalidade pelo STATUS do receptor (Componente 1): preferir
+            # terminar em companheiro LIVRE, evitar receptor em PERIGO. 0 = v9.
+            recv_bonus = 0.0
+            if status_on and P["pass_w_recv_free"] > 0.0:
+                recv_state, _ = self._player_status(target, opponents,
+                                                    opp_gk, goal_center)
+                if recv_state == "livre":
+                    recv_bonus = P["pass_w_recv_free"]
+                elif recv_state == "perigo":
+                    recv_bonus = -P["pass_w_recv_free"]
+
             score = (advance
                      + P["pass_w_clearance"] * clearance
                      - P["pass_w_mate_pressure"] * mate_pressure
@@ -454,11 +496,15 @@ class MyBot(lugo4py.Bot, ABC):
                      + switch
                      - P["pass_w_overmark"] * max(0.0, mate_pressure
                                                   - P["pass_mark_threshold"])
-                     + safety)
+                     + safety
+                     + recv_bonus)
 
-            # candidato de RETENÇÃO (só com pass_retain="on"): passe seguro que
-            # perde menos avanço, recuo LIMITADO por pass_retain_backmax.
-            if P.get("pass_retain") == "on" and advance > -P["pass_retain_backmax"]:
+            # candidato de RETENÇÃO: passe seguro que perde menos avanço, recuo
+            # LIMITADO por pass_retain_backmax. Habilitado por pass_retain="on" OU
+            # (Componente 1) portador em atencao/perigo (escape seguro).
+            retain_enabled = (P.get("pass_retain") == "on"
+                              or (status_on and holder_state in ("atencao", "perigo")))
+            if retain_enabled and advance > -P["pass_retain_backmax"]:
                 rscore = (clearance
                           + P["pass_retain_advance_w"] * advance
                           - P["pass_w_mate_pressure"] * mate_pressure)
@@ -793,6 +839,43 @@ class MyBot(lugo4py.Bot, ABC):
             if d < R:
                 p += (R - d) / R
         return p
+
+    @staticmethod
+    def _player_status(pos, opponents, opp_gk, goal_center):
+        """(estado, t_reach) do jogador em `pos`. estado in {"livre","atencao",
+        "perigo"} pela banda de turnos ate o adversario mais proximo alcancar
+        `pos`. Coerente com o veto: turns_for_player(d)=(d-300)/100. O goleiro
+        adversario e' EXCLUIDO por padrao (status_count_gk="off"); com "on" entra
+        com reach 560. Velocity-aware se USE_VELOCITY (so ANTECIPA a ameaca).
+        status_measure="ball" mede ~200 a frente, rumo ao gol de ataque. So e'
+        chamado com pass_status_mode="on"; o caminho default (off) nunca executa."""
+        tx, ty = float(pos.x), float(pos.y)
+        if P.get("status_measure") == "ball":
+            dx, dy = goal_center.x - pos.x, goal_center.y - pos.y
+            m = math.hypot(dx, dy)
+            if m > 1e-9:
+                tx += 200.0 * dx / m       # a bola fica ~200 a frente do portador
+                ty += 200.0 * dy / m
+        count_gk = (P.get("status_count_gk") == "on")
+        gk_num = opp_gk.number if opp_gk is not None else -1
+        t_reach = math.inf
+        for o in opponents:
+            is_gk = (o.number == gk_num)
+            if is_gk and not count_gk:
+                continue
+            d = math.hypot(tx - o.position.x, ty - o.position.y)
+            if USE_VELOCITY:                # so pode APROXIMAR a ameaca
+                lx, ly = geo._lead_pos(o, geo.INTERCEPT_LEAD_TURNS)
+                d = min(d, math.hypot(tx - lx, ty - ly))
+            reach = geo.GOALKEEPER_HALF_EXTENT if is_gk else geo.TOUCH_RADIUS
+            t_o = max(0.0, d - reach) / PLAYER_SPEED
+            if t_o < t_reach:
+                t_reach = t_o
+        if t_reach <= P["status_danger_turns"]:
+            return "perigo", t_reach
+        if t_reach <= P["status_attention_turns"]:
+            return "atencao", t_reach
+        return "livre", t_reach
 
 
 def pressure_bonus(pressure: float) -> float:

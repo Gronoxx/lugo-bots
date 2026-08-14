@@ -68,6 +68,26 @@ DEFAULTS = {
     # a linha ser descartada. 0 = o receptor precisa ganhar a corrida; >0 tolera.
     "pass_endpoint_margin": 0.0,
 
+    # --- status por jogador / "quando passar" (Componente 1). Inertes com
+    # pass_status_mode="off" (=v9). turns_for_player(D)=(D-300)/100 => bandas:
+    # perigo t<=2 (D<=500), atencao t<=3 (D<=600), livre acima. ---
+    "status_danger_turns": 2.0,       # t<=isto => perigo (escape prioritario)
+    "status_attention_turns": 3.0,    # t<=isto => atencao (liga retencao)
+    "pass_min_score_free": 0.0,       # barra de aceite quando LIVRE (v9=0.0)
+    "pass_min_score_attention": 0.0,  # barra quando ATENCAO (v9=0.0)
+    "pass_min_score_danger": -3000.0, # barra quando PERIGO (aceita passe seguro)
+    "pass_w_recv_free": 0.0,          # bonus/penal. por status do receptor (0=v9)
+
+    # --- planejador nao-guloso (Componente 2). Inertes com pass_lookahead="off". ---
+    "plan_beam": 6.0,                 # largura do feixe
+    "plan_w_progress": 1.0,           # peso do progresso ao gol (unid. distancia)
+    "plan_w_shot": 3.0,               # peso do bonus de chute com folga do goleiro
+    "plan_w_livre": 1500.0,           # bonus por terminar em posicao livre
+    "plan_leg_penalty": 40.0,         # custo por turno global da cadeia (anti-cadeia-longa)
+    "plan_margin_turns": 0.0,         # folga minima de interceptacao por perna (turnos)
+    "plan_margin_value": 500.0,       # ganho minimo sobre segurar p/ acionar o passe
+    "plan_control_turns": 1.0,        # turnos p/ assentar a bola antes do passe pleno
+
     # condução
     "carry_repulsion_radius": 2000.0,
     "carry_repulsion_weight": 1.2,
@@ -169,6 +189,13 @@ STRUCTURE_DEFAULTS = {
     # bola completa o passe ao TOCAR o receptor (spec), não no centro. Corrige o
     # lead (projeção do receptor) por ~raio jogador+bola. off = v9 (usa o centro).
     "pass_touch_lead": "off",              # | on
+    # status por jogador / "quando passar" (Componente 1). off = v9 byte-a-byte.
+    "pass_status_mode": "off",             # | on  (chave-mestra do Componente 1)
+    "status_count_gk": "off",              # | on  (conta GK adversario, reach 560)
+    "status_measure": "player",            # | ball (mede ~200 a frente, rumo ao gol)
+    # planejador nao-guloso (Componente 2). off = v9 (nunca chamado).
+    "pass_lookahead": "off",               # | depth2 | depth3
+    "pass_control": "off",                 # | on (aresta de controle/first-touch)
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
@@ -224,6 +251,20 @@ BOUNDS = {
     "pass_retain_advance_w": (0.0, 2.0),
     "pass_retain_backmax": (500.0, 8000.0),
     "pass_endpoint_margin": (0.0, 6.0),
+    "status_danger_turns": (0.0, 4.0),
+    "status_attention_turns": (0.0, 8.0),
+    "pass_min_score_free": (-3000.0, 3000.0),
+    "pass_min_score_attention": (-3000.0, 3000.0),
+    "pass_min_score_danger": (-3000.0, 3000.0),
+    "pass_w_recv_free": (0.0, 3000.0),
+    "plan_beam": (2.0, 16.0),
+    "plan_w_progress": (0.0, 5.0),
+    "plan_w_shot": (0.0, 20.0),
+    "plan_w_livre": (0.0, 6000.0),
+    "plan_leg_penalty": (0.0, 500.0),
+    "plan_margin_turns": (0.0, 4.0),
+    "plan_margin_value": (0.0, 6000.0),
+    "plan_control_turns": (0.0, 3.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -250,6 +291,11 @@ STRUCTURE_OPTIONS = {
     "pass_endpoint_race": ["off", "on"],
     "pass_exec_speed": ["off", "on"],
     "pass_touch_lead": ["off", "on"],
+    "pass_status_mode": ["off", "on"],
+    "status_count_gk": ["off", "on"],
+    "status_measure": ["player", "ball"],
+    "pass_lookahead": ["off", "depth2", "depth3"],
+    "pass_control": ["off", "on"],
     "support_mode": ["v9", "offer"],
 }
 
