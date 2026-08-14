@@ -1,0 +1,296 @@
+<title>Replay LugoBots — mybot (ON) vs rival_p1</title>
+<style>
+  :root{
+    --bg:#eef2ee; --surface:#ffffff; --surface-2:#f4f7f3;
+    --text:#16211c; --muted:#5c6b63; --border:#d6ddd7;
+    --accent:#12889e; --accent-ink:#ffffff;
+    --home:#1c9fbb; --away:#e0603e; --gold:#e0a12b;
+    --shadow:0 1px 2px rgba(20,40,30,.06),0 8px 24px rgba(20,40,30,.08);
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#0e1512; --surface:#151d19; --surface-2:#1a231e;
+      --text:#e7efe9; --muted:#95a89d; --border:#26322b;
+      --accent:#2bbcd6; --accent-ink:#04262d;
+      --home:#33c0da; --away:#f0714c; --gold:#f0bd4f;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#0e1512; --surface:#151d19; --surface-2:#1a231e;
+    --text:#e7efe9; --muted:#95a89d; --border:#26322b;
+    --accent:#2bbcd6; --accent-ink:#04262d;
+    --home:#33c0da; --away:#f0714c; --gold:#f0bd4f;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 10px 30px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    line-height:1.5; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1120px; margin:0 auto; padding:clamp(14px,3vw,28px)}
+  header{display:flex; align-items:baseline; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px}
+  h1{font-size:clamp(1.05rem,2.4vw,1.4rem); font-weight:680; margin:0; letter-spacing:-.01em; text-wrap:balance}
+  h1 .sub{display:block; font-size:.72rem; font-weight:500; color:var(--muted); letter-spacing:.02em; margin-top:2px}
+  .mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-variant-numeric:tabular-nums}
+  .toolbtn{
+    font:inherit; cursor:pointer; border:1px solid var(--border); background:var(--surface);
+    color:var(--text); border-radius:8px; padding:6px 10px; display:inline-flex; align-items:center; gap:6px;
+  }
+  .toolbtn:hover{border-color:var(--accent)}
+  .toolbtn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+  .scorebar{
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+    background:var(--surface); border:1px solid var(--border); border-radius:12px;
+    padding:10px 14px; box-shadow:var(--shadow); margin-bottom:14px;
+  }
+  .team{display:flex; align-items:center; gap:8px; font-weight:600; font-size:.92rem}
+  .dot{width:13px; height:13px; border-radius:50%; flex:none}
+  .dot.h{background:var(--home)} .dot.a{background:var(--away)}
+  .score{font-size:1.5rem; font-weight:720; letter-spacing:.02em}
+  .tag{font-size:.66rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+       color:var(--accent); border:1px solid var(--accent); border-radius:999px; padding:1px 7px}
+  .poss{margin-left:auto; font-size:.8rem; color:var(--muted); display:flex; align-items:center; gap:7px}
+  .poss b{color:var(--text)}
+
+  .pitch-wrap{position:relative; width:100%; aspect-ratio:2/1;
+    border-radius:14px; overflow:hidden; box-shadow:var(--shadow); border:1px solid var(--border)}
+  canvas{display:block; width:100%; height:100%}
+
+  .controls{display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:14px}
+  .play{width:44px; height:44px; border-radius:50%; font-size:1.05rem; justify-content:center; padding:0; flex:none;
+        background:var(--accent); color:var(--accent-ink); border-color:transparent}
+  .play:hover{filter:brightness(1.06); border-color:transparent}
+  .timeline{position:relative; flex:1 1 320px; min-width:220px; height:34px; display:flex; align-items:center}
+  .timeline input[type=range]{width:100%; margin:0; accent-color:var(--accent); cursor:pointer}
+  .ticks{position:absolute; inset:0; pointer-events:none}
+  .tick{position:absolute; top:2px; width:2px; height:9px; border-radius:1px; transform:translateX(-1px)}
+  .tick.h{background:var(--home)} .tick.a{background:var(--away)}
+  .readout{font-size:.82rem; color:var(--muted); display:flex; gap:14px; flex-wrap:wrap; align-items:center}
+  .readout b{color:var(--text)}
+  .speeds{display:inline-flex; gap:4px}
+  .speeds .toolbtn{padding:4px 8px; font-size:.8rem}
+  .speeds .toolbtn[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:transparent}
+  .jump{display:inline-flex; gap:4px}
+  .legend{margin-top:12px; font-size:.78rem; color:var(--muted); display:flex; gap:16px; flex-wrap:wrap; align-items:center}
+  .legend span{display:inline-flex; align-items:center; gap:6px}
+  .swatch{width:11px;height:11px;border-radius:50%;flex:none}
+  .ballsw{width:9px;height:9px;border-radius:50%;background:#fdfdf7;border:1.5px solid #1a1a1a}
+  .ringsw{width:12px;height:12px;border-radius:50%;border:2px solid var(--gold)}
+  footer{margin-top:18px; font-size:.74rem; color:var(--muted); border-top:1px solid var(--border); padding-top:10px}
+  @media (max-width:560px){ .readout{width:100%} .poss{margin-left:0} }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Replay — mybot <span class="tag">Fase A ON</span> vs rival_p1
+      <span class="sub">Validação da correção de passe · lado HOME = nosso bot · 6000 turnos</span>
+    </h1>
+    <button class="toolbtn" id="themeBtn" title="Alternar tema">◐ Tema</button>
+  </header>
+
+  <div class="scorebar">
+    <span class="team"><span class="dot h"></span>mybot (ON)</span>
+    <span class="score mono"><span id="scH">0</span>&nbsp;–&nbsp;<span id="scA">0</span></span>
+    <span class="team"><span class="dot a"></span>rival_p1</span>
+    <span class="poss">posse: <b id="possName">—</b></span>
+  </div>
+
+  <div class="pitch-wrap"><canvas id="pitch"></canvas></div>
+
+  <div class="controls">
+    <button class="toolbtn play" id="playBtn" aria-label="Play/Pause">▶</button>
+    <div class="timeline">
+      <input type="range" id="scrub" min="0" max="0" value="0" step="1" aria-label="Turno">
+      <div class="ticks" id="ticks"></div>
+    </div>
+    <div class="readout">
+      <span>turno <b class="mono" id="turnNo">0</b> / <span class="mono" id="turnMax">0</span></span>
+      <span class="jump">
+        <button class="toolbtn" id="prevGoal" title="Gol anterior">⟵ gol</button>
+        <button class="toolbtn" id="nextGoal" title="Próximo gol">gol ⟶</button>
+      </span>
+      <span class="speeds" id="speeds"></span>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><span class="swatch" style="background:var(--home)"></span>nosso bot (ataca →)</span>
+    <span><span class="swatch" style="background:var(--away)"></span>rival (ataca ←)</span>
+    <span><span class="ballsw"></span>bola</span>
+    <span><span class="ringsw"></span>quem tem a posse</span>
+    <span class="mono" id="ballpos"></span>
+  </div>
+
+  <footer>
+    Campo 20000×10000 (origem no canto inferior-esquerdo, Y para cima). Gol em y∈[3500,6500].
+    Um estado por turno extraído do replay do servidor. Marcadores de gol na linha do tempo — clique nos botões “gol” para pular.
+  </footer>
+</div>
+
+<script id="replaydata" type="application/json">__REPLAY_JSON__</script>
+<script>
+(function(){
+  "use strict";
+  const DATA = JSON.parse(document.getElementById("replaydata").textContent);
+  const F = DATA.frames, M = DATA.meta;
+  const N = F.length;
+  const FW = M.field[0], FH = M.field[1], GY0 = M.goalY[0], GY1 = M.goalY[1];
+  // offsets do frame plano
+  const T=0,BX=1,BY=2,HS=3,HN=4,SH=5,SA=6,HX=7,HY=18,AX=29,AY=40;
+
+  // ---- gols (mudança de placar) ----
+  const goals=[]; let ph=0,pa=0;
+  for(let i=0;i<N;i++){const h=F[i][SH],a=F[i][SA];
+    if(h>ph){goals.push({i,side:"h"});} if(a>pa){goals.push({i,side:"a"});} ph=h;pa=a;}
+
+  // ---- canvas ----
+  const cv=document.getElementById("pitch"), ctx=cv.getContext("2d");
+  let W=0,Hh=0,DPR=1;
+  function resize(){
+    const r=cv.parentElement.getBoundingClientRect();
+    DPR=Math.min(window.devicePixelRatio||1,2);
+    W=Math.round(r.width); Hh=Math.round(r.height);
+    cv.width=Math.round(W*DPR); cv.height=Math.round(Hh*DPR);
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  const PAD=14;
+  function sx(x){return PAD + x/FW*(W-2*PAD);}
+  function sy(y){return Hh-PAD - y/FH*(Hh-2*PAD);} // Y para cima
+
+  function drawPitch(){
+    ctx.clearRect(0,0,W,Hh);
+    // gramado com faixas
+    const bands=10;
+    for(let b=0;b<bands;b++){
+      ctx.fillStyle = b%2 ? "#2b6342" : "#2f6b47";
+      const x0=PAD+b/bands*(W-2*PAD), x1=PAD+(b+1)/bands*(W-2*PAD);
+      ctx.fillRect(x0,PAD,x1-x0,Hh-2*PAD);
+    }
+    ctx.strokeStyle="rgba(233,243,236,.55)"; ctx.lineWidth=1.5; ctx.fillStyle="rgba(233,243,236,.55)";
+    // borda
+    ctx.strokeRect(sx(0),sy(FH),W-2*PAD,Hh-2*PAD);
+    // meio
+    ctx.beginPath(); ctx.moveTo(sx(FW/2),sy(FH)); ctx.lineTo(sx(FW/2),sy(0)); ctx.stroke();
+    // círculo central r=1000
+    ctx.beginPath(); ctx.arc(sx(FW/2),sy(FH/2), (1000/FW)*(W-2*PAD), 0, Math.PI*2); ctx.stroke();
+    ctx.beginPath(); ctx.arc(sx(FW/2),sy(FH/2),2.2,0,Math.PI*2); ctx.fill();
+    // linha da zona de gol (1400 de cada linha de fundo)
+    ctx.save(); ctx.setLineDash([4,5]); ctx.strokeStyle="rgba(233,243,236,.28)";
+    ctx.beginPath(); ctx.moveTo(sx(1400),sy(FH)); ctx.lineTo(sx(1400),sy(0)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(sx(FW-1400),sy(FH)); ctx.lineTo(sx(FW-1400),sy(0)); ctx.stroke();
+    ctx.restore();
+    // gols
+    ctx.lineWidth=4;
+    ctx.strokeStyle="rgba(28,159,187,.9)"; // nosso gol (x=0, defendemos)
+    ctx.beginPath(); ctx.moveTo(sx(0),sy(GY1)); ctx.lineTo(sx(0),sy(GY0)); ctx.stroke();
+    ctx.strokeStyle="rgba(224,96,62,.9)"; // gol adversário (x=FW)
+    ctx.beginPath(); ctx.moveTo(sx(FW),sy(GY1)); ctx.lineTo(sx(FW),sy(GY0)); ctx.stroke();
+  }
+
+  function player(x,y,fill,stroke,num,holder){
+    const px=sx(x),py=sy(y), rr=Math.max(8,Math.min(15,(W/1100)*13));
+    if(holder){ ctx.beginPath(); ctx.arc(px,py,rr+4,0,Math.PI*2);
+      ctx.lineWidth=3; ctx.strokeStyle=GOLD; ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(px,py,rr,0,Math.PI*2);
+    ctx.fillStyle=fill; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle=stroke; ctx.stroke();
+    ctx.fillStyle="#fff"; ctx.font=`600 ${Math.round(rr)}px ui-monospace,monospace`;
+    ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(String(num),px,py+0.5);
+  }
+  let GOLD="#e0a12b", HOMEC="#1c9fbb", AWAYC="#e0603e";
+  function readGold(){ const s=getComputedStyle(document.documentElement);
+    GOLD=s.getPropertyValue("--gold").trim()||GOLD;
+    HOMEC=s.getPropertyValue("--home").trim()||HOMEC;
+    AWAYC=s.getPropertyValue("--away").trim()||AWAYC; }
+
+  function ball(x,y){
+    const px=sx(x),py=sy(y), rr=Math.max(4,(W/1100)*6);
+    ctx.beginPath(); ctx.arc(px,py,rr,0,Math.PI*2);
+    ctx.fillStyle="#fdfdf7"; ctx.fill(); ctx.lineWidth=1.5; ctx.strokeStyle="#171717"; ctx.stroke();
+  }
+
+  const HN_ARR=M.home_nums, AN_ARR=M.away_nums;
+  function drawFrame(idx){
+    const f=F[idx]; drawPitch();
+    const hside=f[HS], hnum=f[HN];
+    for(let i=0;i<11;i++){ const x=f[HX+i],y=f[HY+i]; if(x<0)continue;
+      player(x,y,HOMEC,"rgba(0,0,0,.32)",HN_ARR[i], hside===0&&HN_ARR[i]===hnum); }
+    for(let i=0;i<11;i++){ const x=f[AX+i],y=f[AY+i]; if(x<0)continue;
+      player(x,y,AWAYC,"rgba(0,0,0,.32)",AN_ARR[i], hside===1&&AN_ARR[i]===hnum); }
+    ball(f[BX],f[BY]);
+    // HUD
+    scH.textContent=f[SH]; scA.textContent=f[SA];
+    turnNo.textContent=f[T];
+    possName.textContent = hside<0 ? "solta" : (hside===0? "mybot #"+hnum : "rival #"+hnum);
+    possName.style.color = hside<0? "var(--muted)" : (hside===0? "var(--home)":"var(--away)");
+    ballpos.textContent = "bola ("+f[BX]+", "+f[BY]+")";
+  }
+
+  // ---- elementos ----
+  const scH=document.getElementById("scH"), scA=document.getElementById("scA");
+  const turnNo=document.getElementById("turnNo"), possName=document.getElementById("possName");
+  const ballpos=document.getElementById("ballpos");
+  const scrub=document.getElementById("scrub"), playBtn=document.getElementById("playBtn");
+  document.getElementById("turnMax").textContent=F[N-1][T];
+  scrub.max=N-1;
+
+  // ticks de gol
+  const ticks=document.getElementById("ticks");
+  goals.forEach(g=>{const d=document.createElement("div");
+    d.className="tick "+g.side; d.style.left=(g.i/(N-1)*100)+"%";
+    d.title=(g.side==="h"?"gol mybot":"gol rival")+" @ turno "+F[g.i][T]; ticks.appendChild(d);});
+
+  // velocidades (turnos/seg no 1x)
+  const SPEEDS=[0.5,1,2,4,8]; let speed=2; const BASE=30;
+  const spWrap=document.getElementById("speeds");
+  SPEEDS.forEach(s=>{const b=document.createElement("button"); b.className="toolbtn"; b.textContent=s+"×";
+    b.setAttribute("aria-pressed", s===speed); b.onclick=()=>{speed=s;
+      [...spWrap.children].forEach(c=>c.setAttribute("aria-pressed", c===b)); }; spWrap.appendChild(b);});
+
+  let cur=0, playing=false, last=0;
+  const reduce=window.matchMedia("(prefers-reduced-motion:reduce)").matches;
+  function setFrame(i){ cur=Math.max(0,Math.min(N-1,i)); scrub.value=Math.round(cur); drawFrame(Math.round(cur)); }
+  function loop(ts){ if(!playing)return;
+    if(!last)last=ts; const dt=(ts-last)/1000; last=ts;
+    cur+=dt*BASE*speed; if(cur>=N-1){cur=N-1; pause(); }
+    scrub.value=Math.round(cur); drawFrame(Math.round(cur)); requestAnimationFrame(loop);
+  }
+  function play(){ if(cur>=N-1)cur=0; playing=true; playBtn.textContent="❚❚"; last=0; requestAnimationFrame(loop); }
+  function pause(){ playing=false; playBtn.textContent="▶"; }
+  playBtn.onclick=()=>playing?pause():play();
+  scrub.oninput=()=>{ pause(); setFrame(+scrub.value); };
+
+  function jumpGoal(dir){ pause(); const t=Math.round(cur);
+    let target=null;
+    if(dir>0){ for(const g of goals){ if(g.i>t){target=g.i;break;} } }
+    else { for(let k=goals.length-1;k>=0;k--){ if(goals[k].i<t-2){target=goals[k].i;break;} } }
+    if(target!=null) setFrame(Math.max(0,target-40)); // um pouco antes do gol
+  }
+  document.getElementById("nextGoal").onclick=()=>jumpGoal(1);
+  document.getElementById("prevGoal").onclick=()=>jumpGoal(-1);
+
+  // teclado
+  window.addEventListener("keydown",e=>{
+    if(e.key===" "){e.preventDefault(); playing?pause():play();}
+    else if(e.key==="ArrowRight"){pause(); setFrame(Math.round(cur)+ (e.shiftKey?50:1));}
+    else if(e.key==="ArrowLeft"){pause(); setFrame(Math.round(cur)- (e.shiftKey?50:1));}
+  });
+
+  // tema
+  const themeBtn=document.getElementById("themeBtn");
+  function redraw(){ readGold(); drawFrame(Math.round(cur)); }
+  themeBtn.onclick=()=>{ const r=document.documentElement;
+    const t=r.getAttribute("data-theme");
+    const sysDark=window.matchMedia("(prefers-color-scheme:dark)").matches;
+    r.setAttribute("data-theme", t? (t==="dark"?"light":"dark") : (sysDark?"light":"dark"));
+    redraw();
+  };
+
+  const ro=new ResizeObserver(()=>{ resize(); drawFrame(Math.round(cur)); });
+  ro.observe(cv.parentElement);
+  resize(); readGold(); setFrame(0);
+  if(!reduce) play();
+})();
+</script>
