@@ -26,3 +26,4 @@ videos/
 .DS_Store
 Lugo.zip
 .venv-rl
+rl/checkpoints/
