@@ -381,19 +381,49 @@ class MyBot(lugo4py.Bot, ABC):
                 continue
 
             speed = min(BALL_MAX_SPEED, speed_for_distance(d) * P["pass_speed_mult"])
-            t_ball = turns_for_ball(speed, d)
+            # a bola COMPLETA o passe ao TOCAR o receptor (spec: "the player must
+            # be touching the ball to catch it"), i.e. após percorrer
+            # d - TOUCH_RADIUS (raio jogador 200 + raio bola 100 = 300), não até o
+            # centro. pass_touch_lead="on" usa a distância de CONTATO no tempo de
+            # chegada, para o lead não projetar o receptor à frente demais. off = v9.
+            d_reach = d
+            if P.get("pass_touch_lead") == "on":
+                d_reach = max(1.0, d - geo.TOUCH_RADIUS)
+            t_ball = turns_for_ball(speed, d_reach)
             if t_ball == math.inf:
                 continue
             target = lead_target(mate, t_ball)
+
+            # Fase A — reforço cirúrgico #1: segurança com a velocidade REALMENTE
+            # executada. kick_to pode entregar menos que a planejada (redução por
+            # ângulo + soma à velocidade atual da bola); checar o veto com a
+            # planejada subestima o tempo que o adversário tem. off = v9.
+            kick_speed = speed
+            if P.get("pass_exec_speed") == "on":
+                v_exec = geo.achievable_shot_speed(inspector, me,
+                                                   inspector.get_ball(), target)
+                kick_speed = min(speed, v_exec)
+                if turns_for_ball(kick_speed, d) == math.inf:
+                    continue      # a bola executada nem alcança o alvo
+
+            # Fase A — reforço cirúrgico #2 (C3): corrida no destino. A linha pode
+            # estar limpa em trânsito e a recepção ser disputada. Descarta se um
+            # adversário chega ao ponto de recepção antes do receptor (+margem).
+            # Mesmo padrão de _touch_target. off = v9.
+            if P.get("pass_endpoint_race") == "on":
+                t_recv = turns_for_player(dist(mate.position, target))
+                if any(turns_for_player(dist(o.position, target))
+                       <= t_recv + P["pass_endpoint_margin"] for o in opponents):
+                    continue
 
             # veto de interceptação (velocity-aware se ligado). Uma varredura só:
             # quando pass_w_intercept>0 reusa intercept_risk p/ veto E score.
             r = None
             if P["pass_w_intercept"] > 0.0:
-                r = intercept_risk(me.position, target, opponents, speed, USE_VELOCITY)
+                r = intercept_risk(me.position, target, opponents, kick_speed, USE_VELOCITY)
                 if r <= 0.0:
                     continue
-            elif can_be_intercepted(me.position, target, opponents, speed, USE_VELOCITY):
+            elif can_be_intercepted(me.position, target, opponents, kick_speed, USE_VELOCITY):
                 continue
 
             mate_gain = dist(target, goal_center)

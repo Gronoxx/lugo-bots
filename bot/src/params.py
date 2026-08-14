@@ -63,6 +63,10 @@ DEFAULTS = {
     "pass_retain_turns": 3.0,       # turnos até um oponente alcançar o portador (gatilho)
     "pass_retain_advance_w": 0.8,   # peso do avanço no score do passe de retenção
     "pass_retain_backmax": 3000.0,  # recuo MÁXIMO de retenção E teto p/ o bônus de segurança
+    # corrida no destino (gene pass_endpoint_race): margem em TURNOS que o
+    # receptor pode chegar DEPOIS de um adversário ao ponto de recepção antes de
+    # a linha ser descartada. 0 = o receptor precisa ganhar a corrida; >0 tolera.
+    "pass_endpoint_margin": 0.0,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -153,6 +157,18 @@ STRUCTURE_DEFAULTS = {
     "use_velocity": "off",                 # | on
     # retenção de posse sob pressão (passe lateral/trás LIMITADO). off = v9.
     "pass_retain": "off",                  # | on
+    # C3 corrida no destino: descarta o passe se um adversário chega ao ponto de
+    # recepção antes do receptor (+pass_endpoint_margin). Tapa a recepção
+    # disputada que a linha "limpa em trânsito" não enxerga. off = v9.
+    "pass_endpoint_race": "off",           # | on
+    # segurança do passe com a velocidade REALMENTE executada por kick_to (a
+    # redução por ângulo + soma à velocidade da bola pode entregar menos que a
+    # planejada, dando tempo ao adversário). off = v9 (checa com a planejada).
+    "pass_exec_speed": "off",              # | on
+    # tempo de chegada do passe pela distância de CONTATO (d - TOUCH_RADIUS): a
+    # bola completa o passe ao TOCAR o receptor (spec), não no centro. Corrige o
+    # lead (projeção do receptor) por ~raio jogador+bola. off = v9 (usa o centro).
+    "pass_touch_lead": "off",              # | on
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
@@ -207,6 +223,7 @@ BOUNDS = {
     "pass_retain_turns": (0.0, 15.0),
     "pass_retain_advance_w": (0.0, 2.0),
     "pass_retain_backmax": (500.0, 8000.0),
+    "pass_endpoint_margin": (0.0, 6.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -230,6 +247,9 @@ STRUCTURE_OPTIONS = {
     "far_post_run": ["off", "on"],
     "use_velocity": ["off", "on"],
     "pass_retain": ["off", "on"],
+    "pass_endpoint_race": ["off", "on"],
+    "pass_exec_speed": ["off", "on"],
+    "pass_touch_lead": ["off", "on"],
     "support_mode": ["v9", "offer"],
 }
 
