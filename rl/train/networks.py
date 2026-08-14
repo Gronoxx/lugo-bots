@@ -26,6 +26,10 @@ class Actor(nn.Module):
 
 
 class Critic(nn.Module):
+    """Crítico CENTRAL (MAPPO/CTDE): recebe a obs GLOBAL do time e emite um valor
+    POR-AGENTE (n_out=11). Condicionar no estado completo dá vantagens de menor
+    variância e melhor coordenação que um crítico ego-only (IPPO)."""
+    n_out: int = 11
     hidden: int = 256
 
     @nn.compact
@@ -33,7 +37,7 @@ class Critic(nn.Module):
         x = nn.relu(nn.Dense(self.hidden)(gobs))
         x = nn.relu(nn.Dense(self.hidden)(x))
         x = nn.relu(nn.Dense(self.hidden)(x))
-        return nn.Dense(1)(x)[..., 0]                # valor (...)
+        return nn.Dense(self.n_out)(x)              # (..., 11) valores por-agente
 
 
 def sample_action(logits_list, key):

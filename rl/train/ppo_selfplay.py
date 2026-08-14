@@ -1,19 +1,21 @@
 """
-PPO self-play (IPPO com compartilhamento de parâmetros) para o Lugo em JAX.
+PPO self-play (MAPPO — CTDE com compartilhamento de parâmetros) para o Lugo/JAX.
 
-Cada um dos 11 jogadores é uma amostra independente (mesmos pesos): ator sobre a
-obs egocêntrica + crítico por-agente sobre a mesma obs. Reward POR-AGENTE (time
-compartilhado + near-ball individual, ver rewards.py) -> GAE e vantagem
-por-agente -> sinal de crédito claro. Aprendiz=HOME; AWAY=oponente frozen do pool
-(init = clone-BC do v9) ou estático (--opp static). Snapshots periódicos.
+- Ator compartilhado sobre a obs egocêntrica dos 11 jogadores.
+- Crítico CENTRAL sobre a obs GLOBAL do time -> valor POR-AGENTE (11).
+- Reward POR-AGENTE (time compartilhado + near-ball individual, ver rewards.py).
+- GAE e vantagem por-agente; ratio por-agente; clip PPO; minibatches.
+- Aprendiz=HOME. Oponente: estático (bootstrap), self-play (pool frozen), ou
+  CURRÍCULO (estático nos primeiros updates -> self-play). Snapshots periódicos.
+- Log CSV: reward, entropia, POSSE%, TERRITÓRIO% por update (verificar, não presumir).
 
-  ../.venv-rl/bin/python rl/train/ppo_selfplay.py [--updates N] [--bc] [--opp static]
-
-Salva rl/checkpoints/policy.pkl.
+  ../.venv-rl/bin/python rl/train/ppo_selfplay.py --updates N [--bc] [--opp curriculum]
 """
 import argparse
+import csv
 import pickle
 import sys
+import time
 from pathlib import Path
 
 _R = Path(__file__).resolve().parents[2]
@@ -41,7 +43,7 @@ OPT = optax.chain(optax.clip_by_global_norm(0.5), optax.adam(LR))
 
 
 def _act(params, aobs_side, key):
-    return sample_action(actor.apply(params, aobs_side), key)   # (B,11,4),(B,11)
+    return sample_action(actor.apply(params, aobs_side), key)
 
 
 def make_rollout(env_step, opp_static=False):
@@ -49,29 +51,31 @@ def make_rollout(env_step, opp_static=False):
     def rollout(lp, cp, opp, state, obs, key):
         def stepf(carry, _):
             state, obs, key = carry
-            aobs, _ = obs
+            aobs, gobs = obs
             key, kH, kA = jax.random.split(key, 3)
             aH, lpH = _act(lp, aobs[:, J.HOME], kH)
             aA = jnp.zeros_like(aH) if opp_static else _act(opp, aobs[:, J.AWAY], kA)[0]
-            val = critic.apply(cp, aobs[:, J.HOME])            # (B,11) por-agente
+            val = critic.apply(cp, gobs[:, J.HOME])            # (B,11)
             action = jnp.stack([aH, aA], axis=1)
             s2, obs2, reward, done, _ = env_step(state, action)
-            tr = dict(obs=aobs[:, J.HOME], act=aH, logp=lpH, val=val,
-                      rew=reward[:, J.HOME], done=done)         # rew (B,11) por-agente
+            poss = (s2.holder_side == J.HOME).mean()
+            terr = (s2.ball_pos[:, 0] > J.MAX_X / 2).mean()
+            tr = dict(obs=aobs[:, J.HOME], gobs=gobs[:, J.HOME], act=aH, logp=lpH,
+                      val=val, rew=reward[:, J.HOME], done=done, poss=poss, terr=terr)
             return (s2, obs2, key), tr
         (state, obs, key), traj = jax.lax.scan(stepf, (state, obs, key), None, length=T)
-        last_val = critic.apply(cp, obs[0][:, J.HOME])         # (B,11)
+        last_val = critic.apply(cp, obs[1][:, J.HOME])         # (B,11)
         return state, obs, key, traj, last_val
     return rollout
 
 
 def gae(rew, val, done, last_val):
-    """rew,val: (T,B,11); done: (T,B); last_val: (B,11). Vantagem por-agente."""
-    d = done[..., None]                                        # (T,B,1) -> broadcast p/ 11
+    """rew,val: (T,B,11); done: (T,B). Vantagem por-agente."""
+    d = done[..., None]
     def f(carry, x):
-        adv, next_val = carry
+        adv, nv = carry
         r, v, dd = x
-        delta = r + GAMMA * next_val * (1 - dd) - v
+        delta = r + GAMMA * nv * (1 - dd) - v
         adv = delta + GAMMA * LAM * (1 - dd) * adv
         return (adv, v), adv
     _, adv = jax.lax.scan(f, (jnp.zeros_like(last_val), last_val),
@@ -81,31 +85,28 @@ def gae(rew, val, done, last_val):
 
 @jax.jit
 def update(lp, cp, ostate, traj, adv, ret, key):
-    N = T * B * 11
-    mbsize = N // N_MB
-    flat = lambda x: x.reshape((N,) + x.shape[3:])
-    obs = flat(traj["obs"]); act = flat(traj["act"])
-    old_logp = traj["logp"].reshape(N)
-    A = adv.reshape(N); R = ret.reshape(N)
+    M = T * B                                                 # timesteps de time
+    mbsize = M // N_MB
+    fl = lambda x: x.reshape((M,) + x.shape[2:])
+    obs, gobs, act = fl(traj["obs"]), fl(traj["gobs"]), fl(traj["act"])
+    old_logp = fl(traj["logp"]); A = fl(adv); R = fl(ret)     # (M,11) exceto gobs (M,96)
     A = (A - A.mean()) / (A.std() + 1e-8)
 
     def epoch(carry, ekey):
         lp, cp, ostate = carry
-        perm = jax.random.permutation(ekey, N)
-
+        perm = jax.random.permutation(ekey, M)
         def mb(carry, mbi):
             lp, cp, ostate = carry
             sl = jax.lax.dynamic_slice_in_dim(perm, mbi * mbsize, mbsize)
-            o, a, ol, Ai, Ri = obs[sl], act[sl], old_logp[sl], A[sl], R[sl]
-
+            o, g, a, ol, Ai, Ri = obs[sl], gobs[sl], act[sl], old_logp[sl], A[sl], R[sl]
             def loss(params):
                 lp_, cp_ = params
-                logits = actor.apply(lp_, o)
-                nlp = action_logprob(logits, a)
+                logits = actor.apply(lp_, o)                  # (mb,11,ni)
+                nlp = action_logprob(logits, a)               # (mb,11)
                 ratio = jnp.exp(nlp - ol)
                 pg = -jnp.minimum(ratio * Ai,
                                   jnp.clip(ratio, 1 - CLIP, 1 + CLIP) * Ai).mean()
-                v = critic.apply(cp_, o)
+                v = critic.apply(cp_, g)                      # (mb,11)
                 vl = ((v - Ri) ** 2).mean()
                 return pg + VF * vl - ENT * entropy(logits).mean()
             grads = jax.grad(loss)((lp, cp))
@@ -114,19 +115,19 @@ def update(lp, cp, ostate, traj, adv, ret, key):
             return (lp, cp, ostate), None
         (lp, cp, ostate), _ = jax.lax.scan(mb, (lp, cp, ostate), jnp.arange(N_MB))
         return (lp, cp, ostate), None
-
     keys = jax.random.split(key, EPOCHS)
     (lp, cp, ostate), _ = jax.lax.scan(epoch, (lp, cp, ostate), keys)
     return lp, cp, ostate
 
 
-def main(updates, use_bc, episode_len, opp="selfplay"):
+def main(updates, use_bc, episode_len, opp, curr_frac=0.4):
     reset_env, env_step = E.make_env(B, episode_len=episode_len)
-    rollout = make_rollout(env_step, opp_static=(opp == "static"))
+    roll_static = make_rollout(env_step, opp_static=True)
+    roll_self = make_rollout(env_step, opp_static=False)
     key = jax.random.PRNGKey(0)
     state, obs = reset_env()
     lp = actor.init(key, obs[0][:, J.HOME])
-    cp = critic.init(key, obs[0][:, J.HOME])                   # crítico na obs do agente
+    cp = critic.init(key, obs[1][:, J.HOME])                  # crítico na obs GLOBAL
     if use_bc:
         with open(_R / "rl/checkpoints/bc_actor.pkl", "rb") as f:
             bc = pickle.load(f)
@@ -134,33 +135,41 @@ def main(updates, use_bc, episode_len, opp="selfplay"):
         print("warm-start do BC carregado", flush=True)
     pool = [jax.tree_util.tree_map(jnp.array, lp)]
     ostate = OPT.init((lp, cp))
+    logf = open(_R / "rl/checkpoints/train_log.csv", "w", newline="")
+    logw = csv.writer(logf); logw.writerow(["update", "reward", "entropy", "poss", "terr", "phase"])
 
-    import time
+    n_static = int(updates * curr_frac) if opp == "curriculum" else (updates if opp == "static" else 0)
     t0 = time.time()
     for u in range(updates):
+        phase = "static" if u < n_static else "selfplay"
         key, kr, ku = jax.random.split(key, 3)
-        oi = pool[np.random.randint(len(pool))]
-        state, obs, kr, traj, last_val = rollout(lp, cp, oi, state, obs, kr)
+        if phase == "static":
+            state, obs, kr, traj, last_val = roll_static(lp, cp, lp, state, obs, kr)
+        else:
+            oi = pool[np.random.randint(len(pool))]
+            state, obs, kr, traj, last_val = roll_self(lp, cp, oi, state, obs, kr)
         adv, ret = gae(traj["rew"], traj["val"], traj["done"], last_val)
         lp, cp, ostate = update(lp, cp, ostate, traj, adv, ret, ku)
-        if (u + 1) % SNAP_EVERY == 0 and opp != "static":
+        if (u + 1) % SNAP_EVERY == 0 and phase == "selfplay":
             pool.append(jax.tree_util.tree_map(jnp.array, lp)); pool = pool[-6:]
         if u % 10 == 0 or u == updates - 1:
-            ent = float(entropy(actor.apply(lp, traj["obs"][0, :64].reshape(-1, 109))).mean())
-            print(f"update {u:4d} | reward/passo {float(traj['rew'].mean()):+.4f} "
-                  f"| entropia {ent:.3f} | {time.time()-t0:.0f}s", flush=True)
+            ent = float(entropy(actor.apply(lp, traj["obs"][0, :64])).mean())
+            rew, poss, terr = float(traj["rew"].mean()), float(traj["poss"].mean()), float(traj["terr"].mean())
+            logw.writerow([u, rew, ent, poss, terr, phase]); logf.flush()
+            print(f"u{u:4d}[{phase[:4]}] reward {rew:+.4f} ent {ent:.3f} "
+                  f"posse {poss*100:.0f}% terr {terr*100:.0f}% {time.time()-t0:.0f}s", flush=True)
 
-    out = _R / "rl/checkpoints/policy.pkl"
-    with open(out, "wb") as f:
+    logf.close()
+    with open(_R / "rl/checkpoints/policy.pkl", "wb") as f:
         pickle.dump(jax.tree_util.tree_map(np.asarray, lp), f)
-    print(f"política salva em {out}", flush=True)
+    print("política salva em rl/checkpoints/policy.pkl", flush=True)
 
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--updates", type=int, default=200)
+    ap.add_argument("--updates", type=int, default=400)
     ap.add_argument("--bc", action="store_true")
     ap.add_argument("--episode-len", type=int, default=2000)
-    ap.add_argument("--opp", default="selfplay", choices=["selfplay", "static"])
+    ap.add_argument("--opp", default="curriculum", choices=["static", "selfplay", "curriculum"])
     a = ap.parse_args()
     main(a.updates, a.bc, a.episode_len, a.opp)
