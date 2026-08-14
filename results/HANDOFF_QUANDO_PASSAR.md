@@ -71,10 +71,12 @@ turno ~83. Logo o **portão "0 mismatches" (cmp de replay) é INVÁLIDO** — o
   oponente fraco, driblar domina (base goleia 45×0) e o planejador troca dribles
   dominantes por passes que fragmentam a jogada. **Correção**: gate
   `plan_trigger_turns` — só planeja quando o portador está MARCADO (adv de linha
-  ≤3 turnos); livre ⇒ dribla. 2ª rodada (com gate): [A PREENCHER]. Nota: a
-  composição de posse é NÃO-confiável sob goleada (45×0 vira "1 posse" na
-  segmentação) → usar GOLS como métrica sob blowout. Valor do planejador é uma
-  aposta para oponente forte (plataforma); localmente o objetivo é "não piorar".
+  ≤3 turnos); livre ⇒ dribla. **2ª rodada (com gate)**: saldo de gols +20,8→+23,5,
+  turnover flat (65→66%, sem churn), good_chance_rate 0,47→0,49, best_slack
+  −418→−305. O gate **inverteu** o planejador de claramente-negativo para
+  neutro/levemente-positivo (não-significativo em n=12; alta real é aposta para a
+  plataforma). Nota: composição de posse é NÃO-confiável sob goleada (45×0 vira
+  "1 posse" na segmentação) → usar GOLS como métrica sob blowout.
 
 ## Como testar (comandos)
 ```
