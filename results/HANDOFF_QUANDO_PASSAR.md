@@ -135,6 +135,22 @@ Após o veredito da régua forte (self-play):
 | status + game_state | +0,05 (n.s.) | game_state não ajuda |
 | **status default (n=40)** | **+0,28 ± 0,09 (z=2,91 SIG), 10V/29E/1D** | **WINNER** |
 
+## Bônus — painel de genes dormentes (self-play vs base Fase A, n=20)
+A régua forte reavaliou os genes default-off que a evolução vs level-1 rejeitou.
+**Nenhum bate a baseline (todos n.s., ±0,15):** chase_mode=adaptive +0,15 · pass_retain
++0,10 · support_mode=offer +0,05 · use_velocity 0,00 · far_post_run −0,05 · carry_mode=touch
+−0,05 · shot_gate=slack −0,10 · shot_gate=xg −0,10. Conclusão: a base v9/Fase A é bem
+afinada; **`pass_status_mode` (+0,28) é o único ganho validado**. `shot_gate=slack/xg`
+NÃO ajudam ⇒ o gargalo de finalização é GEOMÉTRICO (bater o goleiro), não o portão de chute.
+
+## Finalização — direção (próximo passo, aguardando decisão do usuário)
+Análise do replay `best_view` (melhor versão vs level-1, 3×0): 12 chutes, só **25% venceram
+o goleiro** (slack>0) e marcamos exatamente esses 3; em posses-perigo só **33% tinham ângulo
+aberto**. Gargalo = geométrico. Some a **zona do gol (raio 1400, só goleiro entra)**: chutes
+saem de ≥1400 do centro. ⇒ valor em **manobrar o goleiro para abrir o canto** (fingir lado /
+passe que arrasta o GK / cruzar ao 2º poste), não em conduzir mais nem trocar o shot_gate.
+Replay interativo: `bench/best_view.html` + Artifact publicado.
+
 ## Como testar (comandos)
 ```
 PY=<caminho local>   # worktree nao tem .venv proprio
