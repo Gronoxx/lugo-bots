@@ -142,7 +142,10 @@ PY=<caminho local>   # worktree nao tem .venv proprio
 PYTHONPATH=~/lugo-bots/bot/src:~/lugo-bots/analysis   $PY bench/decide_dump.py <replay> > base.txt
 PYTHONPATH=~/lugo-quando-passar/bot/src:~/lugo-quando-passar/analysis $PY bench/decide_dump.py <replay> > qp.txt
 diff base.txt qp.txt   # vazio = inerte
-# efeito:
+# efeito — REGUA FORTE (self-play, o teste que importa; baixa variancia):
+$PY bench/ab_selfplay.py --reps 20 --test '{"pass_status_mode":"on"}'  # saldo vs base Fase A
+$PY bench/ab_selfplay.py --reps 10 --test '{}'   # controle base×base (~0)
+# efeito vs oponente fraco (so ruido, nao decisivo):
 $PY bench/ab_status.py --reps 6 --opp rival_p3:latest   # Comp 1 (turnover)
 $PY bench/ab_plan.py   --reps 6 --opp rival_p3:latest   # Comp 2 (progressao)
 # imagem: docker build -t mybot:qp bot   (genes via BOT_PARAMS / HOME_PARAMS / AWAY_PARAMS)
