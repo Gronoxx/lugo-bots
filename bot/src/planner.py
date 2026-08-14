@@ -148,10 +148,13 @@ def _make_leg(ox, oy, bvx, bvy, theta, mate, opponents, control, use_velocity):
             theta + theta_extra + tb)
 
 
-def plan_pass(me, ball, mates, opponents, goal_center, opp_gk, use_velocity):
+def plan_pass(me, ball, mates, opponents, goal_center, opp_gk, use_velocity,
+              game_aggr=0.0):
     """Melhor 1a perna de passe que inicia a cadeia segura de maior valor ate o
     jogador mais perto do gol, ou None (=> conduzir). MPC: so a 1a perna e'
-    devolvida; replaneja no proximo turno. Profundidade por pass_lookahead."""
+    devolvida; replaneja no proximo turno. Profundidade por pass_lookahead.
+    game_aggr (Comp 3, [-1,1]): perseguir (>0) reduz a margem p/ acionar planos
+    de avanco; proteger (<0) a aumenta. 0 => sem efeito."""
     depth = 3 if P.get("pass_lookahead") == "depth3" else 2
     beam = int(round(P["plan_beam"]))
     control_opts = (False, True) if P.get("pass_control") == "on" else (False,)
@@ -168,7 +171,9 @@ def plan_pass(me, ball, mates, opponents, goal_center, opp_gk, use_velocity):
     hold_value = node_value(me.position.x, me.position.y, opponents, opp_gk,
                             goal_center)
     best_first = None
-    best_val = hold_value + P["plan_margin_value"]   # so passa se superar segurar
+    # so passa se superar segurar; perseguir (game_aggr>0) reduz a margem,
+    # proteger (game_aggr<0) a aumenta (Componente 3).
+    best_val = hold_value + P["plan_margin_value"] * max(0.0, 1.0 - game_aggr)
 
     # no = (px, py, bvx, bvy, theta, first_leg, used_set)
     frontier = [(me.position.x, me.position.y, bvx, bvy, 0.0, None, frozenset())]

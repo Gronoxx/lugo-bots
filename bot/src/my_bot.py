@@ -359,6 +359,9 @@ class MyBot(lugo4py.Bot, ABC):
         mates = [p for p in inspector.get_my_team_players()
                  if p.number != self.number]
 
+        # Componente 3: agressividade por estado de jogo (0.0 se game_state_mode off).
+        game_aggr = self._game_aggr(inspector)
+
         # Componente 2: planejador NAO-GULOSO. Se acionado e achar uma cadeia de
         # passe segura de valor > segurar, decide o passe imediato (MPC: so a 1a
         # perna). off = nunca chamado (=v9). Se nao achar, cai no fluxo abaixo
@@ -366,7 +369,7 @@ class MyBot(lugo4py.Bot, ABC):
         if P.get("pass_lookahead") != "off":
             plan = planner.plan_pass(me, inspector.get_ball(), mates, opponents,
                                      goal_center, inspector.get_opponent_goalkeeper(),
-                                     USE_VELOCITY)
+                                     USE_VELOCITY, game_aggr)
             if plan is not None:
                 tgt, spd = plan
                 return geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)
@@ -401,6 +404,8 @@ class MyBot(lugo4py.Bot, ABC):
             best_score = {"livre": P["pass_min_score_free"],
                           "atencao": P["pass_min_score_attention"],
                           "perigo": P["pass_min_score_danger"]}[holder_state]
+        if P.get("game_state_mode") == "on":     # Comp 3: perseguir baixa a barra
+            best_score -= game_aggr * P["game_aggr_scale"]
         retain = None
         retain_score = -1e18
 
@@ -876,6 +881,21 @@ class MyBot(lugo4py.Bot, ABC):
         if t_reach <= P["status_attention_turns"]:
             return "atencao", t_reach
         return "livre", t_reach
+
+    @staticmethod
+    def _game_aggr(inspector):
+        """Agressividade por estado de jogo (Componente 3, game_state_mode="on"):
+        -1 (proteger vantagem) .. 0 (neutro) .. +1 (perseguir). off => 0.0.
+        Calibrado: futebol real ~2,9 gols/jogo, Lugo ~4,7-6,9 => 'vantagem
+        confortavel' ~3-4 gols (lead_comfortable). So cresce no fim de jogo."""
+        if P.get("game_state_mode") != "on":
+            return 0.0
+        turn = inspector.get_turn()
+        margin = inspector.get_my_team().score - inspector.get_opponent_team().score
+        L = max(1.0, P["late_game_turns"])
+        late = min(1.0, max(0.0, (turn - (6000.0 - L)) / L))
+        lead = max(-1.0, min(1.0, margin / max(1.0, P["lead_comfortable"])))
+        return max(-1.0, min(1.0, -lead * late))
 
 
 def pressure_bonus(pressure: float) -> float:

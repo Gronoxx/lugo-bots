@@ -88,6 +88,13 @@ DEFAULTS = {
     "plan_margin_value": 500.0,       # ganho minimo sobre segurar p/ acionar o passe
     "plan_control_turns": 1.0,        # turnos p/ assentar a bola antes do passe pleno
 
+    # --- tatica por estado de jogo (Componente 3, PRIORIDADE BAIXA). Inerte com
+    # game_state_mode="off". Calibrado: real ~2,9 gols/jogo, Lugo ~4,7-6,9 =>
+    # 'vantagem confortavel' ~3-4 gols. ---
+    "lead_comfortable": 3.0,          # margem (gols) = vantagem confortavel
+    "late_game_turns": 1200.0,        # ultimos N turnos contam como "fim de jogo"
+    "game_aggr_scale": 300.0,         # deslocamento da barra de passe por unid. de aggr
+
     # condução
     "carry_repulsion_radius": 2000.0,
     "carry_repulsion_weight": 1.2,
@@ -196,6 +203,7 @@ STRUCTURE_DEFAULTS = {
     # planejador nao-guloso (Componente 2). off = v9 (nunca chamado).
     "pass_lookahead": "off",               # | depth2 | depth3
     "pass_control": "off",                 # | on (aresta de controle/first-touch)
+    "game_state_mode": "off",              # | on (tatica por placar/tempo, Comp 3)
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
@@ -265,6 +273,9 @@ BOUNDS = {
     "plan_margin_turns": (0.0, 4.0),
     "plan_margin_value": (0.0, 6000.0),
     "plan_control_turns": (0.0, 3.0),
+    "lead_comfortable": (1.0, 8.0),
+    "late_game_turns": (0.0, 3000.0),
+    "game_aggr_scale": (0.0, 3000.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -296,6 +307,7 @@ STRUCTURE_OPTIONS = {
     "status_measure": ["player", "ball"],
     "pass_lookahead": ["off", "depth2", "depth3"],
     "pass_control": ["off", "on"],
+    "game_state_mode": ["off", "on"],
     "support_mode": ["v9", "offer"],
 }
 
