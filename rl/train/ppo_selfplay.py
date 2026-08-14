@@ -60,8 +60,10 @@ def make_rollout(env_step, opp_static=False):
             s2, obs2, reward, done, _ = env_step(state, action)
             poss = (s2.holder_side == J.HOME).mean()
             terr = (s2.ball_pos[:, 0] > J.MAX_X / 2).mean()
+            goals = (reward[:, J.HOME, 0] > 0.7).mean()        # ~evento de gol (rew salta ~+1)
             tr = dict(obs=aobs[:, J.HOME], gobs=gobs[:, J.HOME], act=aH, logp=lpH,
-                      val=val, rew=reward[:, J.HOME], done=done, poss=poss, terr=terr)
+                      val=val, rew=reward[:, J.HOME], done=done, poss=poss, terr=terr,
+                      goals=goals)
             return (s2, obs2, key), tr
         (state, obs, key), traj = jax.lax.scan(stepf, (state, obs, key), None, length=T)
         last_val = critic.apply(cp, obs[1][:, J.HOME])         # (B,11)
@@ -136,7 +138,7 @@ def main(updates, use_bc, episode_len, opp, curr_frac=0.4):
     pool = [jax.tree_util.tree_map(jnp.array, lp)]
     ostate = OPT.init((lp, cp))
     logf = open(_R / "rl/checkpoints/train_log.csv", "w", newline="")
-    logw = csv.writer(logf); logw.writerow(["update", "reward", "entropy", "poss", "terr", "phase"])
+    logw = csv.writer(logf); logw.writerow(["update", "reward", "entropy", "poss", "terr", "goals", "phase"])
 
     n_static = int(updates * curr_frac) if opp == "curriculum" else (updates if opp == "static" else 0)
     t0 = time.time()
@@ -154,10 +156,11 @@ def main(updates, use_bc, episode_len, opp, curr_frac=0.4):
             pool.append(jax.tree_util.tree_map(jnp.array, lp)); pool = pool[-6:]
         if u % 10 == 0 or u == updates - 1:
             ent = float(entropy(actor.apply(lp, traj["obs"][0, :64])).mean())
-            rew, poss, terr = float(traj["rew"].mean()), float(traj["poss"].mean()), float(traj["terr"].mean())
-            logw.writerow([u, rew, ent, poss, terr, phase]); logf.flush()
-            print(f"u{u:4d}[{phase[:4]}] reward {rew:+.4f} ent {ent:.3f} "
-                  f"posse {poss*100:.0f}% terr {terr*100:.0f}% {time.time()-t0:.0f}s", flush=True)
+            rew = float(traj["rew"].mean()); poss = float(traj["poss"].mean())
+            terr = float(traj["terr"].mean()); gls = float(traj["goals"].mean()) * T
+            logw.writerow([u, rew, ent, poss, terr, gls, phase]); logf.flush()
+            print(f"u{u:4d}[{phase[:4]}] reward {rew:+.4f} ent {ent:.3f} posse {poss*100:.0f}% "
+                  f"terr {terr*100:.0f}% gols/ep~{gls:.2f} {time.time()-t0:.0f}s", flush=True)
 
     logf.close()
     with open(_R / "rl/checkpoints/policy.pkl", "wb") as f:
