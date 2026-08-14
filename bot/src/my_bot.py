@@ -362,17 +362,20 @@ class MyBot(lugo4py.Bot, ABC):
         # Componente 3: agressividade por estado de jogo (0.0 se game_state_mode off).
         game_aggr = self._game_aggr(inspector)
 
-        # Componente 2: planejador NAO-GULOSO. Se acionado e achar uma cadeia de
-        # passe segura de valor > segurar, decide o passe imediato (MPC: so a 1a
-        # perna). off = nunca chamado (=v9). Se nao achar, cai no fluxo abaixo
-        # (guloso + escape do Componente 1).
+        # Componente 2: planejador NAO-GULOSO. So e' acionado quando o portador
+        # esta MARCADO (adversario de linha a <= plan_trigger_turns): jogador LIVRE
+        # dribla (medido vs oponente fraco: trocar drible dominante por passes
+        # fragmenta a jogada e reduz gols). Achando cadeia segura de valor >
+        # segurar, decide o passe imediato (MPC: so a 1a perna). off = v9.
         if P.get("pass_lookahead") != "off":
-            plan = planner.plan_pass(me, inspector.get_ball(), mates, opponents,
-                                     goal_center, inspector.get_opponent_goalkeeper(),
-                                     USE_VELOCITY, game_aggr)
-            if plan is not None:
-                tgt, spd = plan
-                return geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)
+            gk_o = inspector.get_opponent_goalkeeper()
+            if planner._nearest_opp_turns(me.position.x, me.position.y,
+                                          opponents, gk_o) <= P["plan_trigger_turns"]:
+                plan = planner.plan_pass(me, inspector.get_ball(), mates, opponents,
+                                         goal_center, gk_o, USE_VELOCITY, game_aggr)
+                if plan is not None:
+                    tgt, spd = plan
+                    return geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)
 
         my_gain = dist(me.position, goal_center)
         pressure = self._pressure_on(me.position, opponents)

@@ -87,6 +87,7 @@ DEFAULTS = {
     "plan_margin_turns": 0.0,         # folga minima de interceptacao por perna (turnos)
     "plan_margin_value": 500.0,       # ganho minimo sobre segurar p/ acionar o passe
     "plan_control_turns": 1.0,        # turnos p/ assentar a bola antes do passe pleno
+    "plan_trigger_turns": 3.0,        # so planeja se o portador esta MARCADO (adv de linha <= isto); livre => dribla
 
     # --- tatica por estado de jogo (Componente 3, PRIORIDADE BAIXA). Inerte com
     # game_state_mode="off". Calibrado: real ~2,9 gols/jogo, Lugo ~4,7-6,9 =>
@@ -273,6 +274,7 @@ BOUNDS = {
     "plan_margin_turns": (0.0, 4.0),
     "plan_margin_value": (0.0, 6000.0),
     "plan_control_turns": (0.0, 3.0),
+    "plan_trigger_turns": (0.0, 20.0),
     "lead_comfortable": (1.0, 8.0),
     "late_game_turns": (0.0, 3000.0),
     "game_aggr_scale": (0.0, 3000.0),
