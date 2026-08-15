@@ -1,0 +1,9 @@
+rl/
+videos/
+rivals/
+sim/
+analysis/
+bench/recordings/
+results/
+.git/
+*.md
