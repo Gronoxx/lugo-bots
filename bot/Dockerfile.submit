@@ -1,0 +1,17 @@
+# Imagem de SUBMISSÃO à plataforma lugobots.ai.
+# Igual ao bot/Dockerfile, mas com a config da Fase A EMBUTIDA (genes ON) via
+# BOT_PARAMS_FILE — assim a plataforma roda os genes ligados sem depender de env
+# externa. params.py lê BOT_PARAMS_FILE quando BOT_PARAMS não está setado.
+FROM python:3.9-slim-bookworm
+
+WORKDIR /usr/src/app
+ENV PYTHONUNBUFFERED=1
+
+COPY requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY src ./src
+COPY genome_submit.json ./genome_submit.json
+ENV BOT_PARAMS_FILE=/usr/src/app/genome_submit.json
+
+CMD [ "python", "./src/main.py" ]
