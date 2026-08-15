@@ -184,6 +184,46 @@ class MyBot(lugo4py.Bot, ABC):
             return [esc]
         return None                                   # cai na cascata v9
 
+    def _cover_target(self, inspector, me, side):
+        """Cobertura anti-banheira (forense do gol vs BotAdversario1): se ha atacantes
+        adversarios PARADOS no nosso campo durante o nosso ataque, os zagueiros
+        mais proximos ficam GOAL-SIDE deles (marcando) em vez de subir — evita o
+        contra-ataque (sem impedimento no Lugo, banheira e' legal). Determinismo
+        por papel. Devolve o ponto de cobertura p/ `me`, ou None. off = v9."""
+        if P.get("cover_mode") != "on" or me.number not in tac.DEFENDERS:
+            return None
+        ourg = self.mapper.get_defense_goal().get_center()
+        opps = [o for o in inspector.get_opponent_players()
+                if o.number != tac.GOALKEEPER
+                and dist(o.position, ourg) <= P["cover_range"]]
+        if not opps:
+            return None
+        targets = sorted(opps, key=lambda o: dist(o.position, ourg))
+        targets = targets[:int(round(P["cover_count"]))]
+        defs = [p for p in inspector.get_my_team_players()
+                if p.number in tac.DEFENDERS]
+        # pareamento deterministico: cada alvo (mais perigoso 1o) leva o zagueiro
+        # LIVRE mais proximo.
+        used, assigned = set(), {}
+        for t in targets:
+            cand = sorted((d for d in defs if d.number not in used),
+                          key=lambda d: dist(d.position, t.position))
+            if cand:
+                assigned[t.number] = cand[0].number
+                used.add(cand[0].number)
+        for t in targets:
+            if assigned.get(t.number) != me.number:
+                continue
+            dx, dy = ourg.x - t.position.x, ourg.y - t.position.y
+            n = math.hypot(dx, dy) or 1.0
+            cx, cy = t.position.x + dx / n * P["cover_dist"], t.position.y + dy / n * P["cover_dist"]
+            gd = math.hypot(cx - ourg.x, cy - ourg.y)      # nao entrar na zona 1400
+            if gd < 1400.0:
+                cx = ourg.x + (cx - ourg.x) / (gd or 1.0) * 1400.0
+                cy = ourg.y + (cy - ourg.y) / (gd or 1.0) * 1400.0
+            return geo.point(cx, cy)
+        return None
+
     # ------------------------------------------------------------ apoiando
     def on_supporting(self, inspector) -> List[lugo4py.Order]:
         try:
@@ -191,6 +231,12 @@ class MyBot(lugo4py.Bot, ABC):
             ball = inspector.get_ball()
             holder = inspector.get_ball_holder()
             side = inspector.get_my_team_side()
+
+            # Cobertura anti-banheira (cover_mode): zagueiro designado marca o
+            # atacante adversario parado no nosso campo em vez de subir. off = v9.
+            cov = self._cover_target(inspector, me, side)
+            if cov is not None:
+                return [safe_move(inspector, me, cov)]
 
             # Caso 2 (finish_mode): corridas COORDENADAS p/ manobrar o goleiro.
             # Jogador 1 (atacante do lado contrario) corre ao ponto livre c/ angulo;

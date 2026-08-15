@@ -108,6 +108,11 @@ DEFAULTS = {
     "finish_w_cover": 1.0,            # peso da liberdade (cobertura) no ponto de corrida
     "finish_w_slack": 1.0,            # peso do angulo de chute (slack) no ponto de corrida
 
+    # --- COBERTURA anti-banheira (cover_mode="on"). Inertes com off (=v9). ---
+    "cover_count": 2.0,               # quantos zagueiros ficam marcando os parados
+    "cover_range": 8000.0,            # adversario a <=isto do NOSSO gol = "no nosso campo"
+    "cover_dist": 600.0,              # ficar isto goal-side do atacante coberto
+
     # condução
     "carry_repulsion_radius": 2000.0,
     "carry_repulsion_weight": 1.2,
@@ -223,6 +228,7 @@ STRUCTURE_DEFAULTS = {
     "pass_recv_gate": "off",               # | on    (receptor marcado = rele/abre-angulo, nao destino)
     "caso_pass_priority": "pass_first",    # | dribble_first (passe p/ frente antes ou depois do drible seguro)
     "finish_mode": "off",                  # | on  (Caso 1/2/3 de finalizacao: manobrar o goleiro)
+    "cover_mode": "off",                   # | on  (cobertura anti-banheira: zagueiros atras dos parados)
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
@@ -304,6 +310,9 @@ BOUNDS = {
     "finish_run_range": (500.0, 4000.0),
     "finish_w_cover": (0.0, 4.0),
     "finish_w_slack": (0.0, 4.0),
+    "cover_count": (0.0, 4.0),
+    "cover_range": (3000.0, 12000.0),
+    "cover_dist": (200.0, 1500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -341,6 +350,7 @@ STRUCTURE_OPTIONS = {
     "pass_recv_gate": ["off", "on"],
     "caso_pass_priority": ["pass_first", "dribble_first"],
     "finish_mode": ["off", "on"],
+    "cover_mode": ["off", "on"],
     "support_mode": ["v9", "offer"],
 }
 
