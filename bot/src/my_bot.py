@@ -19,6 +19,7 @@ import geometry as geo
 import tactics as tac
 import finishing as fin
 import planner
+import carry
 from params import P
 from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
                       GOAL_MIN_Y, MAX_X, MAX_Y, PLAYER_SPEED, dist,
@@ -74,6 +75,13 @@ class MyBot(lugo4py.Bot, ABC):
                     return [geo.kick_to(inspector, me, inspector.get_ball(),
                                         target, BALL_MAX_SPEED)]
 
+            # Conducao por HIERARQUIA DE CASOS (spec do usuario) — substitui a
+            # cascata v9 abaixo. off (default) => cascata v9 intacta.
+            if P.get("hold_logic") == "caso":
+                order = self._caso_hold(inspector, me, goal_center, opponents, d_goal)
+                if order is not None:
+                    return order
+
             # 2) passar, se houver companheiro melhor posicionado
             pass_order = self._best_pass(inspector)
             if pass_order is not None:
@@ -109,6 +117,46 @@ class MyBot(lugo4py.Bot, ABC):
             print(f'on_holding: {e}')
             traceback.print_exc()
             return []
+
+    def _caso_hold(self, inspector, me, goal_center, opponents, d_goal):
+        """Conducao por HIERARQUIA DE CASOS (spec do usuario). Marcacao = AREA de
+        conducao segura (carry.dribble_freedom). Prioridade:
+          [Caso 1/pass] passe p/ FRENTE a receptor DESMARCADO mais perto do gol
+                        (se caso_pass_priority='pass_first');
+          [Caso 1/2.a]  rota segura rumo ao gol -> conduzir p/ o melhor ponto;
+          [dribble_first] passe p/ frente (se essa a prioridade);
+          [Caso 2.b]    sem rota frontal: se PRESO escapa por passe seguro; senao
+                        reposiciona p/ a maior area livre (de onde a proxima abre).
+        Devolve List[Order] ou None (cai na cascata v9). MPC: 1 passo/turno."""
+        gk = inspector.get_opponent_goalkeeper()
+        fr = carry.dribble_freedom(me.position, opponents, gk, goal_center)
+        pass_first = P.get("caso_pass_priority") != "dribble_first"
+
+        if pass_first:
+            fp = self._best_pass(inspector, require_unmarked_fwd=True)
+            if fp is not None:
+                return [fp]
+
+        # Caso 1 / 2.a: rota segura rumo ao gol -> conduzir
+        if fr["best_fwd"] is not None and fr["fwd"] > 0.2:
+            return [safe_move(inspector, me, fr["best_fwd"])]
+
+        if not pass_first:
+            fp = self._best_pass(inspector, require_unmarked_fwd=True)
+            if fp is not None:
+                return [fp]
+
+        # Caso 2.b: sem rota frontal
+        if fr["cls"] == "preso":
+            esc = self._best_pass(inspector)          # escape: qualquer passe seguro
+            if esc is not None:
+                return [esc]
+        if fr["best_free"] is not None:               # reposicionar p/ area livre
+            return [safe_move(inspector, me, fr["best_free"])]
+        esc = self._best_pass(inspector)
+        if esc is not None:
+            return [esc]
+        return None                                   # cai na cascata v9
 
     # ------------------------------------------------------------ apoiando
     def on_supporting(self, inspector) -> List[lugo4py.Order]:
@@ -347,7 +395,7 @@ class MyBot(lugo4py.Bot, ABC):
                 best_score, best = score, target
         return best
 
-    def _best_pass(self, inspector):
+    def _best_pass(self, inspector, require_unmarked_fwd=False):
         """Melhor passe, ou None. POSSE OBJETIVA (Problema 1): retém a bola com
         passe seguro (linha executável + não interceptável), preferindo avanço;
         sob pressão aceita lateral/trás LIMITADO (pass_retain_backmax). Penaliza
@@ -469,6 +517,23 @@ class MyBot(lugo4py.Bot, ABC):
             advance = my_gain - mate_gain
             clearance = lane_clearance(me.position, target, opponents)
             mate_pressure = self._pressure_on(mate.position, opponents)
+
+            # gate de receptor MARCADO (spec do usuario): um receptor sem area de
+            # conducao (marcado) NAO e' destino terminal — so como rele (planejador)
+            # ou p/ abrir angulo. require_unmarked_fwd (usado pelo Caso): exige
+            # receptor DESMARCADO e mais perto do gol. off = v9 (nenhum gate).
+            if require_unmarked_fwd:
+                if advance <= 0.0:
+                    continue
+                rf = carry.dribble_freedom(mate.position, opponents,
+                                           inspector.get_opponent_goalkeeper(), goal_center)
+                if rf["cls"] in ("preso", "restrito"):
+                    continue
+            elif P.get("pass_recv_gate") == "on":
+                rf = carry.dribble_freedom(mate.position, opponents,
+                                           inspector.get_opponent_goalkeeper(), goal_center)
+                if rf["cls"] == "preso":
+                    continue
 
             # bônus de segurança da linha (posse objetiva). Gate por backmax:
             # NÃO premia passe que recua demais (revisor B) — não vira spam p/ trás.
@@ -857,6 +922,15 @@ class MyBot(lugo4py.Bot, ABC):
         com reach 560. Velocity-aware se USE_VELOCITY (so ANTECIPA a ameaca).
         status_measure="ball" mede ~200 a frente, rumo ao gol de ataque. So e'
         chamado com pass_status_mode="on"; o caminho default (off) nunca executa."""
+        # Comp 1 v2: marcacao por AREA de conducao segura (spec do usuario) em vez
+        # do raio. preso => perigo; restrito => atencao; senao livre. off = raio (v9).
+        if P.get("status_metric") == "area":
+            f = carry.dribble_freedom(pos, opponents, opp_gk, goal_center)
+            if f["cls"] == "preso":
+                return "perigo", 0.0
+            if f["cls"] == "restrito":
+                return "atencao", 1.0
+            return "livre", 9.0
         tx, ty = float(pos.x), float(pos.y)
         if P.get("status_measure") == "ball":
             dx, dy = goal_center.x - pos.x, goal_center.y - pos.y

@@ -96,6 +96,12 @@ DEFAULTS = {
     "late_game_turns": 1200.0,        # ultimos N turnos contam como "fim de jogo"
     "game_aggr_scale": 300.0,         # deslocamento da barra de passe por unid. de aggr
 
+    # --- conducao/marcacao por AREA (hold_logic="caso"). Inertes com defaults v9. ---
+    "mark_t_max": 5.0,                # horizonte (turnos) da area de conducao segura
+    "mark_n_dirs": 24.0,             # direcoes amostradas na area
+    "mark_free_frac": 0.5,            # fwd>isto => livre rumo ao gol
+    "mark_trapped_frac": 0.15,        # area total < isto => PRESO (precisa passar)
+
     # condução
     "carry_repulsion_radius": 2000.0,
     "carry_repulsion_weight": 1.2,
@@ -205,6 +211,11 @@ STRUCTURE_DEFAULTS = {
     "pass_lookahead": "off",               # | depth2 | depth3
     "pass_control": "off",                 # | on (aresta de controle/first-touch)
     "game_state_mode": "off",              # | on (tatica por placar/tempo, Comp 3)
+    # conducao/marcacao por AREA + hierarquia de Casos (spec do usuario). v9 = cascata antiga.
+    "hold_logic": "v9",                    # | caso  (Caso 1/2.a/2.b em on_holding)
+    "status_metric": "radius",             # | area  (marcacao por raio [Comp1] ou por area)
+    "pass_recv_gate": "off",               # | on    (receptor marcado = rele/abre-angulo, nao destino)
+    "caso_pass_priority": "pass_first",    # | dribble_first (passe p/ frente antes ou depois do drible seguro)
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
@@ -278,6 +289,10 @@ BOUNDS = {
     "lead_comfortable": (1.0, 8.0),
     "late_game_turns": (0.0, 3000.0),
     "game_aggr_scale": (0.0, 3000.0),
+    "mark_t_max": (2.0, 10.0),
+    "mark_n_dirs": (8.0, 48.0),
+    "mark_free_frac": (0.0, 1.0),
+    "mark_trapped_frac": (0.0, 0.5),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -310,6 +325,10 @@ STRUCTURE_OPTIONS = {
     "pass_lookahead": ["off", "depth2", "depth3"],
     "pass_control": ["off", "on"],
     "game_state_mode": ["off", "on"],
+    "hold_logic": ["v9", "caso"],
+    "status_metric": ["radius", "area"],
+    "pass_recv_gate": ["off", "on"],
+    "caso_pass_priority": ["pass_first", "dribble_first"],
     "support_mode": ["v9", "offer"],
 }
 
