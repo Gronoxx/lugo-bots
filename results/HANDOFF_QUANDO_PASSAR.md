@@ -151,6 +151,29 @@ saem de ≥1400 do centro. ⇒ valor em **manobrar o goleiro para abrir o canto*
 passe que arrasta o GK / cruzar ao 2º poste), não em conduzir mais nem trocar o shot_gate.
 Replay interativo: `bench/best_view.html` + Artifact publicado.
 
+## Condução por Casos + marcação por ÁREA + gate de receptor (spec do usuário) — IMPLEMENTADO, default-off
+`bot/src/carry.py` (`dribble_freedom` = marcação por área de condução segura por direção,
+rumo-ao-gol>lateral>trás; a assimetria frente/trás emerge da reachability). Genes:
+`hold_logic=caso` (hierarquia Caso 1/2.a/2.b em `on_holding` → `_caso_hold`), `status_metric=area`
+(Comp 1 por área), `pass_recv_gate` (receptor marcado = relé/abre-ângulo, não destino),
+`caso_pass_priority` (pass_first|dribble_first), `mark_*`. Inércia off=v9 provada (decide_dump).
+**Verificado que DISPARA** (não é no-op): em 2009 turnos de posse HOME, 0% cai na cascata v9;
+~12% passe, ~87% condução.
+
+**Veredito self-play (vs base Fase A, n=20 cada):**
+| variante | saldo/jogo | veredito |
+|---|---|---|
+| CASO (pass_first)+gate | +0,00 (todos empate) | neutro (dribla como a base) |
+| CASO (dribble_first)+gate | −0,15 (n.s., borderline) | levemente pior |
+| marcação por ÁREA no Comp 1 | +0,05 (n.s.) | **pior que o raio (+0,28)** → manter raio |
+| gate de receptor sozinho | +0,10 ± 0,16 (n.s.) | neutro |
+
+Conclusão: o arcabouço é **fiel e funcional, mas NEUTRO vs a base forte** (o drible da base já é
+quase-ótimo; o framework o reproduz). Fica **default-off** (nunca regride). **Único ganho de decisão
+validado segue sendo o Comp 1 por RAIO (+0,28).** Ressalva: rejeição é na régua LOCAL (self-play); na
+plataforma, vs oponente que PARE o nosso drible, condução/planejador podem ter valor. A lógica existe
+como base para a finalização.
+
 ## Como testar (comandos)
 ```
 PY=<caminho local>   # worktree nao tem .venv proprio
