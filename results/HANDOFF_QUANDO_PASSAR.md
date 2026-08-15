@@ -189,6 +189,22 @@ implementação precise de (a) afinar quando cruzar / o ponto de corrida, ou (b)
 custam posição — decompor cruzamento vs corrida vs Caso 1. **Leak real (25% dos chutes vencem o
 goleiro) segue ABERTO.**
 
+## Cobertura anti-banheira (cover_mode) — plataforma-motivada, SEGURA
+Forense do gol sofrido vs BotAdversario1 (plataforma): durante nosso ataque a linha subiu e os
+atacantes #9/#10 ficaram parados no nosso campo (banheira, legal — sem impedimento) sem
+marcação → contra-ataque e gol. `_cover_target` (`cover_mode`): os `cover_count` zagueiros mais
+próximos ficam goal-side dos atacantes adversários a ≤`cover_range` do nosso gol (respeita
+zona-1400). Self-play (n=24): cover sozinho +0,12 (n.s.); **cover+status +0,08 (n.s.), 2V/22E/0D**.
+NEUTRA/SEGURA no jogo normal (não custa no ataque; 0 derrotas com status). Ganho real (plugar o
+contra-ataque) NÃO aparece no self-play (nosso bot não faz banheira contra si) → **validar vs
+BotAdversario1 na plataforma**.
+
+## ⭐ CANDIDATO DE PRODUÇÃO (re-submeter à plataforma)
+`{"pass_endpoint_race":"on","pass_exec_speed":"on","pass_touch_lead":"on","pass_status_mode":"on","cover_mode":"on"}`
+= Fase A + escape/status (+0,28, único ganho de decisão validado; corrige o erro de condução do #3)
++ cobertura anti-banheira (segura; pluga o gol de contra-ataque vs o topo). Demais genes (planejador,
+condução-Casos, finalização, game_state) OFF — neutros/negativos no self-play; testáveis na plataforma.
+
 ## Como testar (comandos)
 ```
 PY=<caminho local>   # worktree nao tem .venv proprio
