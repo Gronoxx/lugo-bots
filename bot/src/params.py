@@ -102,6 +102,12 @@ DEFAULTS = {
     "mark_free_frac": 0.5,            # fwd>isto => livre rumo ao gol
     "mark_trapped_frac": 0.15,        # area total < isto => PRESO (precisa passar)
 
+    # --- FINALIZACAO (finish_mode="on"). Inertes com finish_mode off (=v9). ---
+    "finish_sure_slack": 0.0,         # Caso 1: chuta se slack do goleiro > isto (0=vence)
+    "finish_run_range": 2000.0,       # Caso 2: raio do goleiro p/ iniciar a manobra/corridas
+    "finish_w_cover": 1.0,            # peso da liberdade (cobertura) no ponto de corrida
+    "finish_w_slack": 1.0,            # peso do angulo de chute (slack) no ponto de corrida
+
     # condução
     "carry_repulsion_radius": 2000.0,
     "carry_repulsion_weight": 1.2,
@@ -216,6 +222,7 @@ STRUCTURE_DEFAULTS = {
     "status_metric": "radius",             # | area  (marcacao por raio [Comp1] ou por area)
     "pass_recv_gate": "off",               # | on    (receptor marcado = rele/abre-angulo, nao destino)
     "caso_pass_priority": "pass_first",    # | dribble_first (passe p/ frente antes ou depois do drible seguro)
+    "finish_mode": "off",                  # | on  (Caso 1/2/3 de finalizacao: manobrar o goleiro)
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
@@ -293,6 +300,10 @@ BOUNDS = {
     "mark_n_dirs": (8.0, 48.0),
     "mark_free_frac": (0.0, 1.0),
     "mark_trapped_frac": (0.0, 0.5),
+    "finish_sure_slack": (-500.0, 1500.0),
+    "finish_run_range": (500.0, 4000.0),
+    "finish_w_cover": (0.0, 4.0),
+    "finish_w_slack": (0.0, 4.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -329,6 +340,7 @@ STRUCTURE_OPTIONS = {
     "status_metric": ["radius", "area"],
     "pass_recv_gate": ["off", "on"],
     "caso_pass_priority": ["pass_first", "dribble_first"],
+    "finish_mode": ["off", "on"],
     "support_mode": ["v9", "offer"],
 }
 

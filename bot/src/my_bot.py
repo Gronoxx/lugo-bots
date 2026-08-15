@@ -20,6 +20,8 @@ import tactics as tac
 import finishing as fin
 import planner
 import carry
+import shooting
+import finish_play
 from params import P
 from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
                       GOAL_MIN_Y, MAX_X, MAX_Y, PLAYER_SPEED, dist,
@@ -70,10 +72,34 @@ class MyBot(lugo4py.Bot, ABC):
 
             # 1) finalizar, se estivermos em alcance perigoso e com ângulo
             if d_goal <= P["dangerous_shot_range"]:
+                # Caso 1 (finish_mode): se existe ponto do gol com GOL CERTO —
+                # slack do goleiro > finish_sure_slack (conta pulo), alcancavel e
+                # linha livre — chuta esse ponto (o de MAIOR folga). off = v9.
+                if P.get("finish_mode") == "on":
+                    sh = shooting.best_goal_shot(
+                        inspector.get_ball().position, goal_center.x,
+                        inspector.get_opponent_goalkeeper(), list(opponents),
+                        P["gk_reach_speed"])
+                    if sh is not None and sh[1] > P["finish_sure_slack"]:
+                        return [geo.kick_to(inspector, me, inspector.get_ball(),
+                                            sh[0], BALL_MAX_SPEED)]
                 target = self._best_shot_target(inspector, goal)
                 if target is not None:
                     return [geo.kick_to(inspector, me, inspector.get_ball(),
                                         target, BALL_MAX_SPEED)]
+
+            # Caso 2 (finish_mode): CRUZAR p/ o Jogador 1 se ele esta aberto (linha
+            # livre) E venceria o goleiro da posicao dele (goleiro deslocado). off = v9.
+            if P.get("finish_mode") == "on" and d_goal <= P["dangerous_shot_range"] + 1500:
+                mates_f = [p for p in inspector.get_my_team_players()
+                           if p.number != self.number]
+                jog1, _ = finish_play.roles(me, mates_f)
+                cross = finish_play.holder_cross(
+                    me, jog1, inspector.get_opponent_goalkeeper(),
+                    opponents, goal_center.x)
+                if cross is not None:
+                    tgt, spd = cross
+                    return [geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)]
 
             # Conducao por HIERARQUIA DE CASOS (spec do usuario) — substitui a
             # cascata v9 abaixo. off (default) => cascata v9 intacta.
@@ -165,6 +191,28 @@ class MyBot(lugo4py.Bot, ABC):
             ball = inspector.get_ball()
             holder = inspector.get_ball_holder()
             side = inspector.get_my_team_side()
+
+            # Caso 2 (finish_mode): corridas COORDENADAS p/ manobrar o goleiro.
+            # Jogador 1 (atacante do lado contrario) corre ao ponto livre c/ angulo;
+            # Jogador 2 (meia) vira no-rele. Determinismo por papel. off = v9.
+            if P.get("finish_mode") == "on" and holder is not None:
+                gc = self.mapper.get_attack_goal().get_center()
+                if dist(holder.position, gc) <= P["dangerous_shot_range"] + 1500:
+                    opps = inspector.get_opponent_players()
+                    gk = inspector.get_opponent_goalkeeper()
+                    mates = [p for p in inspector.get_my_team_players()
+                             if p.number != holder.number]
+                    jog1, jog2 = finish_play.roles(holder, mates)
+                    if jog1 is not None:
+                        j1t = finish_play.run_point(jog1, ball.position, gk, opps,
+                                                    gc.x, holder.position, 6.0)
+                        if me.number == jog1.number and j1t is not None:
+                            return [safe_move(inspector, me, j1t)]
+                        if (jog2 is not None and me.number == jog2.number
+                                and j1t is not None):
+                            rp = finish_play.relay_point(me, holder.position, j1t,
+                                                         opps, gk)
+                            return [safe_move(inspector, me, rp)]
 
             # posição de formação, deslocada para frente (estamos atacando)
             base = tac.formation_position(self.number, ball.position, side,
