@@ -174,6 +174,21 @@ validado segue sendo o Comp 1 por RAIO (+0,28).** Ressalva: rejeição é na ré
 plataforma, vs oponente que PARE o nosso drible, condução/planejador podem ter valor. A lógica existe
 como base para a finalização.
 
+## Finalização (Caso 1/2, manobrar goleiro) — IMPLEMENTADA, default-off, veredito NEUTRO/NEGATIVO
+`shooting.py` (cobertura probabilística, goleiro esperado, slack de chute com pulo, `best_goal_shot`)
++ `finish_play.py` (papéis Jogador 1/2, ponto de corrida por cobertura×ângulo, cruzamento) + genes
+`finish_mode`/`finish_*`. Compila, joga (4×0 vs level-1), inerte off=v9.
+**Achado físico (validado):** goleiro CENTRADO cobre a boca inteira de 1400 (slack −635) → deslocar
+o goleiro é NECESSÁRIO. **Veredito self-play (n=24):** finish sozinho −0,12; finish+caso −0,12;
+finish+status **+0,00** (arrasta o status de +0,28 → 0). ⇒ **como implementado, NÃO ganha e prejudica
+o vencedor. Default-off.**
+**Ressalva crítica sobre a régua:** o self-play usa o NOSSO goleiro como oponente — que posiciona
+igual ao que exploraríamos, então pode SUBESTIMAR o valor da manobra vs goleiros EXTERNOS. O teste
+justo da finalização é vs goleiros de outros bots (level-1..3 / plataforma). Provável que a
+implementação precise de (a) afinar quando cruzar / o ponto de corrida, ou (b) as corridas off-ball
+custam posição — decompor cruzamento vs corrida vs Caso 1. **Leak real (25% dos chutes vencem o
+goleiro) segue ABERTO.**
+
 ## Como testar (comandos)
 ```
 PY=<caminho local>   # worktree nao tem .venv proprio
