@@ -35,6 +35,7 @@ sys.path.insert(0, os.path.join(HERE, "..", "analysis"))
 sys.path.insert(0, HERE)
 import defense_report as DR       # noqa: E402
 import proxy_metric as PM         # noqa: E402
+import setplay_report as SR       # noqa: E402  (v7: kickoff/rebote no A/B)
 
 V2 = {"pass_endpoint_race": "on", "pass_exec_speed": "on",
       "pass_touch_lead": "on", "pass_status_mode": "on", "cover_mode": "on"}
@@ -123,6 +124,7 @@ def main():
             for arm in ARM_ORDER
             for rep in range(1, args.reps + 1) for side in ("home", "away")]
     results = {a: [] for a in ARM_ORDER}
+    results_sr = {a: [] for a in ARM_ORDER}
     paths = {a: [] for a in ARM_ORDER}
     done = 0
     with cf.ThreadPoolExecutor(max_workers=args.parallel) as ex:
@@ -142,6 +144,11 @@ def main():
                 print(f"[{done}/{len(jobs)}] {arm} {our}: {gf}x{ga}", flush=True)
             except Exception as e:
                 print(f"[{done}/{len(jobs)}] {arm}: erro na análise ({e})", flush=True)
+            try:                       # v7: setplay/kickoff/rebote no A/B
+                results_sr[arm].append(SR.analyze_file(path, our))
+            except Exception as e:
+                print(f"[{done}/{len(jobs)}] {arm}: erro no setplay ({e})",
+                      flush=True)
 
     print("=" * 78)
     aggs = {}
@@ -154,7 +161,10 @@ def main():
         print(f"  [proxy] good_chance_rate={m['good_chance_rate']:.3f} "
               f"best_slack={m['best_slack_mean']:+.0f} "
               f"shot_slack>0={m['shot_slack_frac_pos']:.2f} (n={m['n_shots']}) "
-              f"gols={m['goals_mean']:.2f}/{m['conceded_mean']:.2f}\n")
+              f"gols={m['goals_mean']:.2f}/{m['conceded_mean']:.2f}")
+        if results_sr[arm]:            # v7: kickoff/rebote/transição
+            SR.print_report(SR.aggregate(results_sr[arm]), f"setplay {arm}")
+        print()
 
     if len(aggs) == 2:
         b, t = aggs["base"], aggs["test"]

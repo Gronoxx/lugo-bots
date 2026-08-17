@@ -66,10 +66,15 @@ def analyze_file(path, our_side):
                             dtype=np.int64)
 
     out = Counter()
+    extra = {"rob2fin_dt": []}
     out["n_files"] = 1
 
     # ---------------- kickoffs
-    for i0 in _resets(d):
+    reset_idx = _resets(d)
+    reset_zone = set()
+    for r0 in reset_idx:
+        reset_zone.update(range(r0, min(r0 + 30, n)))
+    for i0 in reset_idx:
         out["kickoffs"] += 1
         j = i0 + 1
         while j < n and hold[j] < 0:
@@ -77,8 +82,21 @@ def analyze_file(path, our_side):
         if j >= n:
             continue
         out["ko_touch_dt"] += j - i0
+        # v7: gols em até 200t (10s) do reset — a janela da cascata de
+        # kickoff dos tops (BotAdversario1 antigo: 3×0 em ~23s; BotAdversario2: gol aos 7s)
+        g200 = min(i0 + 200, n - 1)
+        if their_sc[g200] > their_sc[i0]:
+            out["ko_ga200"] += 1
+        if our_sc[g200] > our_sc[i0]:
+            out["ko_gf200"] += 1
         if hold[j] != our_s:
             out["ko_lost"] += 1
+            # v7 (kickoff_race): re-roubo em ≤100t (5s) do kickoff perdido
+            w100_end = min(j + 100, n)
+            for k in range(j, w100_end):
+                if hold[k] == our_s:
+                    out["ko_steal100"] += 1
+                    break
             continue
         out["ko_won"] += 1
         out[f"ko_taker_{int(num[j])}"] += 1
@@ -117,6 +135,11 @@ def analyze_file(path, our_side):
             continue
         who, k = winner
         out["sb_won" if who == "ours" else "sb_lost"] += 1
+        # v7 (swarm_rebound): rebote APROVEITADO = novo chute on-goal nosso
+        # em ≤60t (3s) após ganhar a segunda bola (o rechute do cerco)
+        if who == "ours" and np.any((our_shot_idx > k)
+                                    & (our_shot_idx <= min(k + 60, n))):
+            out["sb_reshot60"] += 1
         # corrida: dist do nosso NÃO-chutador mais próximo ao ponto da futura
         # reposse, medida NO turno do chute (vs o deles mais próximo)
         px, py = float(d["bx"][k]), float(d["by"][k])
@@ -133,6 +156,52 @@ def analyze_file(path, our_side):
             do = np.hypot(d[ox][i] - px, d[oy][i] - py)[o_ok].min()
             out["sb_dist_theirs"] += int(do)
 
+    # ---------------- roubo -> finalização (transição ofensiva, v7)
+    # "roubo" = posse ESTABELECIDA nossa (>=MIN_RUN turnos com dono) que
+    # sucede posse estabelecida deles — sem isso o flicker da disputa conta
+    # centenas de micro-trocas por jogo.
+    their_s = 1 - our_s
+    MIN_RUN = 5
+    runs = []                           # (side, start, last)
+    cur_side = cur_start = last_seen = None
+    for k in range(n):
+        h_ = int(hold[k])
+        if h_ < 0:
+            continue
+        if cur_side is None or h_ != cur_side:
+            if cur_side is not None:
+                runs.append((cur_side, cur_start, last_seen))
+            cur_side, cur_start = h_, k
+        last_seen = k
+    if cur_side is not None:
+        runs.append((cur_side, cur_start, last_seen))
+    steal_at = []
+    for ri in range(1, len(runs)):
+        ps, p0, p1 = runs[ri - 1]
+        cs, c0, c1 = runs[ri]
+        if cs != our_s or ps != their_s:
+            continue
+        if (p1 - p0) < MIN_RUN or (c1 - c0) < MIN_RUN:
+            continue
+        if c0 in reset_zone:
+            continue
+        steal_at.append(c0)
+    out["steals_total"] += len(steal_at)
+    for k in steal_at:
+        # primeiro on-goal nosso APÓS o roubo e ANTES da próxima posse deles
+        nxt_theirs = n
+        for k2 in range(k + 1, n):
+            if int(hold[k2]) == their_s:
+                nxt_theirs = k2
+                break
+        cand = our_shot_idx[(our_shot_idx > k) & (our_shot_idx < nxt_theirs)]
+        if len(cand):
+            dt = int(cand[0] - k)
+            out["tr_fin"] += 1
+            extra["rob2fin_dt"].append(dt)
+            if dt <= 100:
+                out["tr_fin_le100"] += 1
+
     # ---------------- slack dos chutes tomados (P1)
     pr = PM.proxy_for_replay(d, our_l)
     ss = pr["shot_slacks"]
@@ -140,13 +209,16 @@ def analyze_file(path, our_side):
     out["shots_slack_pos"] = sum(1 for x in ss if x > 0)
     out["gf"] = pr["our_goals"]
     out["ga"] = pr["conceded"]
-    return dict(out), None
+    return dict(out), extra
 
 
 def aggregate(results):
     agg = Counter()
-    for out, _ in results:
+    dts = []
+    for out, extra in results:
         agg.update(out)
+        if extra:
+            dts += extra.get("rob2fin_dt", [])
     a = dict(agg)
     ko = max(1, a.get("kickoffs", 0))
     kw = max(1, a.get("ko_won", 0))
@@ -162,6 +234,14 @@ def aggregate(results):
     a["sb_dist_theirs_mean"] = a.get("sb_dist_theirs", 0) / max(1, dec)
     a["shots_slack_pos_pct"] = (100.0 * a.get("shots_slack_pos", 0)
                                 / max(1, a.get("shots_with_slack", 0)))
+    # v7: métricas dos genes novos
+    a["ko_steal100_pct"] = (100.0 * a.get("ko_steal100", 0)
+                            / max(1, a.get("ko_lost", 0)))
+    a["sb_reshot60_pct"] = (100.0 * a.get("sb_reshot60", 0)
+                            / max(1, a.get("sb_won", 0)))
+    a["tr_fin_rate_pct"] = (100.0 * a.get("tr_fin", 0)
+                            / max(1, a.get("steals_total", 0)))
+    a["tr_fin_dt_med"] = float(np.median(dts)) if dts else float("nan")
     return a
 
 
@@ -186,6 +266,14 @@ def print_report(a, label):
     print(f"    corrida no instante do chute: nosso mais próximo "
           f"{a['sb_dist_ours_mean']:.0f}d vs deles {a['sb_dist_theirs_mean']:.0f}d "
           f"(déficit {a['sb_dist_ours_mean'] - a['sb_dist_theirs_mean']:+.0f}d)")
+    # v7: kickoff_race / swarm_rebound / transição vertical
+    print(f"  v7: re-roubo ≤100t do kickoff perdido {a['ko_steal100_pct']:.0f}% "
+          f"({a.get('ko_steal100', 0)}/{a.get('ko_lost', 0)}) | gols ≤200t "
+          f"pós-reset: pró {a.get('ko_gf200', 0)} sofridos {a.get('ko_ga200', 0)}")
+    print(f"  v7: rebote aproveitado (rechute ≤60t) {a['sb_reshot60_pct']:.0f}% "
+          f"({a.get('sb_reshot60', 0)}/{a.get('sb_won', 0)}) | roubos "
+          f"{a.get('steals_total', 0)} → finalização {a['tr_fin_rate_pct']:.0f}% "
+          f"(dt mediano {a['tr_fin_dt_med']:.0f}t; ≤100t: {a.get('tr_fin_le100', 0)})")
     print(f"  SLACK: {a['shots_slack_pos_pct']:.0f}% dos chutes com folga>0 "
           f"(n={a.get('shots_with_slack', 0)}) | gols {a.get('gf', 0)}x{a.get('ga', 0)}")
 
