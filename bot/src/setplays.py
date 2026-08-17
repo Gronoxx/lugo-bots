@@ -120,6 +120,63 @@ def hold_orders(bot, inspector, me, opponents):
     return None                       # (3) cascata normal
 
 
+def race_lost_active(bot, inspector):
+    """v7/METAMORFO (kickoff_race): janela pós-reset com a corrida PERDIDA —
+    eles seguram a saída, ou a disputa está perdida (chegam antes). NÃO usa
+    active(): aquela janela ABORTA quando eles viram donos, que é exatamente
+    o cenário do ring. Fonte: anel de 6 do BotAdversario1 antigo e do BotAdversario4
+    sobre o kickoff adversário (roubo→gol em ~8s)."""
+    if P.get("kickoff_race") != "on":
+        return False
+    rt = getattr(bot, "_reset_turn", None)
+    if rt is None:
+        return False
+    turn = inspector.get_snapshot().turn
+    if turn < rt or turn - rt > P["kr_window"]:
+        return False
+    h = inspector.get_ball_holder()
+    if h is not None and h.number != 0:
+        return h.team_side != inspector.get_my_team_side()
+    return not tac.we_are_closest(inspector)
+
+
+def ring_orders(bot, inspector, me, chasers, safe_move_fn):
+    """v7 (kickoff_race): arco de interceptação do 1º passe deles, ao redor
+    do círculo central no LADO DEFENSIVO, quando a corrida do reinício foi
+    perdida. kr_ring_count MIDS/FWDS não-chasers mais próximos do centro;
+    DEFENDERS nunca (a retaguarda fica). Slots por ordem de y em
+    [-kr_arc_deg, +kr_arc_deg] da direção círculo→NOSSO gol, raio
+    kr_ring_radius (fora do círculo; em jogo a posição é livre).
+    None = fluxo normal."""
+    if not race_lost_active(bot, inspector):
+        return None
+    if me.number == tac.GOALKEEPER or me.number in chasers:
+        return None
+    if me.number not in tac.MIDFIELDERS and me.number not in tac.FORWARDS:
+        return None
+    center = point(MAX_X / 2.0, MAX_Y / 2.0)
+    pool = [p for p in inspector.get_my_team_players()
+            if p.number not in chasers and p.number != tac.GOALKEEPER
+            and (p.number in tac.MIDFIELDERS or p.number in tac.FORWARDS)]
+    pool.sort(key=lambda p: (dist(p.position, center), p.number))
+    chosen = pool[:int(round(P["kr_ring_count"]))]
+    nums = [p.number for p in chosen]
+    if me.number not in nums:
+        return None
+    by_y = sorted(chosen, key=lambda p: (p.position.y, p.number))
+    slot = next(i for i, p in enumerate(by_y) if p.number == me.number)
+    R = len(by_y)
+    off_deg = 0.0 if R == 1 else (-1.0 + 2.0 * slot / (R - 1)) * P["kr_arc_deg"]
+    side = inspector.get_my_team_side()
+    # direção círculo -> NOSSO gol (HOME defende x=0 => pi; AWAY => 0)
+    base_ang = math.pi if side == lugo4py.TeamSide.HOME else 0.0
+    ang = base_ang + math.radians(off_deg)
+    r = P["kr_ring_radius"]
+    tx = center.x + math.cos(ang) * r
+    ty = max(400.0, min(MAX_Y - 400.0, center.y + math.sin(ang) * r))
+    return [safe_move_fn(point(tx, ty)), inspector.make_order_catch()]
+
+
 def blitz_active(bot, inspector):
     """v7/METAMORFO (kickoff_blitz): janela da blitz do NOSSO reinício —
     corrida GANHA (ou em disputa), bloco ainda não chegou ao terço final.

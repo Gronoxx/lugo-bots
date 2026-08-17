@@ -155,6 +155,14 @@ DEFAULTS = {
     "kb_window": 100.0,
     "kb_depth": 6500.0,
     "kb_release": 0.62,
+    # v7/METAMORFO (kickoff_race): corrida do reinicio PERDIDA -> arco de
+    # kr_ring_count MIDS/FWDS ao redor do circulo central (lado defensivo,
+    # raio kr_ring_radius, abertura ±kr_arc_deg) por kr_window turnos, p/
+    # interceptar o 1º passe do vencedor (anel do BotAdversario1/BotAdversario4).
+    "kr_window": 40.0,
+    "kr_ring_count": 4.0,
+    "kr_ring_radius": 1600.0,
+    "kr_arc_deg": 55.0,
     # P3 (second_ball): apos NOSSO chute sem gol, a reposse da limpeza do GK
     # deles acontece a ~2300-3000 do gol em ~25 turnos e ELES ganham 61-83%
     # (deficit ~789d na corrida). Os sb_count ATACANTES nao-chasers mais
@@ -388,6 +396,11 @@ STRUCTURE_DEFAULTS = {
     # release por avanco da bola/alcance de finalizacao. Par natural do
     # init_variant="race" + kickoff_play. off = v6.
     "kickoff_blitz": "off",                # | on
+    # v7/METAMORFO (kickoff_race): quando a corrida do reinicio e' PERDIDA,
+    # arco de MIDS/FWDS nao-chasers em volta do circulo p/ roubar o 1º passe
+    # (DEFENDERS nunca; chasers seguem à bola — agressividade preservada).
+    # off = v6.
+    "kickoff_race": "off",                 # | on
     # P3: ocupar a zona de limpeza do GK deles apos nosso chute sem gol.
     "second_ball": "off",                  # | on
     # v7/METAMORFO (swarm_rebound): 2-3 atacantes no ARCO de rebote do GK
@@ -533,6 +546,10 @@ BOUNDS = {
     "kb_window": (40.0, 160.0),
     "kb_depth": (3000.0, 8500.0),
     "kb_release": (0.45, 0.85),
+    "kr_window": (10.0, 80.0),
+    "kr_ring_count": (2.0, 5.0),
+    "kr_ring_radius": (1150.0, 2600.0),
+    "kr_arc_deg": (20.0, 90.0),
     "sb_count": (0.0, 3.0),
     "sb_window": (5.0, 40.0),
     "sb_dist": (1500.0, 4000.0),
@@ -609,6 +626,7 @@ STRUCTURE_OPTIONS = {
     "init_variant": ["v3", "kick9", "fine", "sym", "race"],
     "kickoff_play": ["off", "on"],
     "kickoff_blitz": ["off", "on"],
+    "kickoff_race": ["off", "on"],
     "second_ball": ["off", "on"],
     "swarm_rebound": ["off", "on"],
     "attack_width": ["off", "on"],

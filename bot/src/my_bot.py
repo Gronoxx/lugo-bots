@@ -610,6 +610,14 @@ class MyBot(lugo4py.Bot, ABC):
                 return [safe_move(inspector, me, target),
                         inspector.make_order_catch()]
 
+            # v7/METAMORFO (kickoff_race): corrida do reinício PERDIDA (eles
+            # seguram a saída) → arco de interceptação do 1º passe ao redor
+            # do círculo central. off = v6.
+            ring = setplays.ring_orders(self, inspector, me, chasers,
+                                        lambda t: safe_move(inspector, me, t))
+            if ring is not None:
+                return ring
+
             # P3 (second_ball): o GK deles segura a nossa bola chutada por
             # ~14-16 turnos DENTRO do anel (estamos DEFENDING) — é exatamente
             # quando a formação puxava os atacantes de volta e perdíamos a
@@ -688,6 +696,14 @@ class MyBot(lugo4py.Bot, ABC):
                 target = r[1] if r else ball.position
                 return [safe_move(inspector, me, target),
                         inspector.make_order_catch()]
+
+            # v7/METAMORFO (kickoff_race): disputa do reinício perdendo a
+            # corrida → arco de interceptação (antes das rotas do playbook,
+            # que pressupõem corrida NOSSA). off = v6.
+            ring = setplays.ring_orders(self, inspector, me, chasers,
+                                        lambda t: safe_move(inspector, me, t))
+            if ring is not None:
+                return ring
 
             # P2 (kickoff_play): não-chasers do playbook pré-correm as rotas
             # durante a corrida do reinício (o TAKER é chaser e persegue normal).
