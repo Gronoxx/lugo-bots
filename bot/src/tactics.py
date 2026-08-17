@@ -57,12 +57,19 @@ def ball_advance_frac(ball_pos, side) -> float:
     return 1.0 - ball_pos.x / MAX_X
 
 
-def formation_position(number: int, ball_pos, side, aggression: float = 0.0):
+def formation_position(number: int, ball_pos, side, aggression: float = 0.0,
+                       attacking: bool = False):
     """Posição que este jogador deve ocupar, dada a posição da bola.
 
     A formação desliza com a bola: avança quando atacamos, recua quando
     defendemos, e comprime lateralmente na direção da bola.
     `aggression` (0..1) empurra a linha inteira para frente.
+
+    P3 (attack_width): com `attacking=True` + gene ligado, os ATACANTES trocam
+    a compressão lateral fixa (SHIFT_Y rumo à bola) por `attack_width_shift`
+    (0 = manter a largura da base; negativo = abrir para o lado OPOSTO à
+    bola — estica a defesa e o goleiro deles). Default (gene off ou
+    attacking=False) = comportamento byte-idêntico ao histórico.
     """
     bx, by = BASE_FORMATION.get(number, (0.4, 0.5))
     adv = ball_advance_frac(ball_pos, side)
@@ -72,8 +79,11 @@ def formation_position(number: int, ball_pos, side, aggression: float = 0.0):
     x_frac = max(0.02, min(0.92, x_frac))
 
     # deslocamento lateral: comprime na direção da bola sem abandonar o lado
+    y_shift = SHIFT_Y
+    if attacking and number in FORWARDS and P.get("attack_width") == "on":
+        y_shift = P["attack_width_shift"]
     ball_y_frac = ball_pos.y / MAX_Y
-    y_frac = by + SHIFT_Y * (ball_y_frac - 0.5)
+    y_frac = by + y_shift * (ball_y_frac - 0.5)
     y_frac = max(0.06, min(0.94, y_frac))
 
     return point(mirror_x(x_frac, side), y_frac * MAX_Y)

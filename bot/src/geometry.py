@@ -350,6 +350,51 @@ def intercept_risk(origin, target, opponents, kick_speed,
     return 30.0 if r == math.inf else r
 
 
+def intercept_slack_turnwise(origin, target, opponents, kick_speed) -> float:
+    """Folga mínima de interceptação amostrada por FRONTEIRAS DE TURNO da bola
+    (gene pass_veto_mode="turnwise") — a alternativa HONESTA ao carve-out
+    NO_BLOCK_NEAR_ORIGIN do veto v9.
+
+    Modelo: a captura no servidor é por PROXIMIDADE avaliada em posições
+    DISCRETAS (snapshot a snapshot), não por colisão contínua com o caminho —
+    por isso um marcador AO LADO do portador não pega uma bola que já passou
+    (a bola anda ~395 no 1º turno e nunca está a <=300 dele em nenhum
+    snapshot). Logo: no turno t a bola está em B(t) (soma de ball_step) e o
+    oponente k intercepta sse turns_for_player(dist(k, B(t))) <= t. Sem
+    carve-out: o presser NA FRENTE, na linha de saída, conta desde o 1º turno
+    (era invisível ao veto v9 dentro de 700d — gol 3 vs BotAdversario1); o presser
+    ATRÁS/AO LADO segue não bloqueando (fica a >=~600 de B(1) => precisa >=3
+    turnos), exatamente o que o carve-out acertava.
+
+    Retorna a folga mínima em turnos (>0 seguro; <=0 interceptável);
+    UNREACHABLE_RISK se a bola não alcança o alvo; inf sem oponentes.
+    """
+    dx, dy = target.x - origin.x, target.y - origin.y
+    total = math.hypot(dx, dy)
+    if total == 0:
+        return math.inf
+    ux, uy = dx / total, dy / total
+    v = min(kick_speed, BALL_MAX_SPEED)
+    travelled = 0.0
+    t = 0
+    min_slack = math.inf
+    while v > BALL_MIN_SPEED:
+        travelled += ball_step(v)
+        v -= BALL_DECEL
+        t += 1
+        capped = min(travelled, total)
+        px = origin.x + ux * capped
+        py = origin.y + uy * capped
+        for opp in opponents:
+            d_opp = math.hypot(px - opp.position.x, py - opp.position.y)
+            slack = turns_for_player(d_opp) - t
+            if slack < min_slack:
+                min_slack = slack
+        if travelled >= total:
+            return min_slack
+    return UNREACHABLE_RISK
+
+
 def lead_target(receiver, turns_ahead: float):
     """Onde o companheiro estará em `turns_ahead` turnos (passe com liderança)."""
     v = receiver.velocity

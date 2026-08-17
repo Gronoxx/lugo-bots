@@ -112,6 +112,70 @@ DEFAULTS = {
     "cover_count": 2.0,               # quantos zagueiros ficam marcando os parados
     "cover_range": 8000.0,            # adversario a <=isto do NOSSO gol = "no nosso campo"
     "cover_dist": 600.0,              # ficar isto goal-side do atacante coberto
+    # B2: mistura o ponto goal-side com o ponto na LINHA bola->camper (negacao
+    # de passe). 0 = goal-side puro (=v2). So age com cover_mode="on".
+    "cover_lane_mix": 0.0,
+
+    # --- TRANSICAO DEFENSIVA (pos 0-3 BotAdversario1). Todos inertes por default. ---
+    # A1: barra de area frontal segura abaixo da qual a conducao vira "melhor
+    # direcao livre" (carry_gate="on").
+    "carry_gate_fwd_min": 0.2,
+    # A2: margem (turnos) do veto por fronteiras de turno (pass_veto_mode).
+    "veto_margin_turns": 0.0,
+    # a3.2: piso de distancia de passe quando o portador esta marcado/no terco
+    # defensivo (0 = inerte; v2 exige 800 sempre).
+    "pass_min_dist_danger": 0.0,
+    # a3.3: goleiro-valvula so com o portador aquem desta fracao de avanco.
+    "gk_outlet_maxfrac": 0.34,
+    # a3.4: barra de aceite de passe no TERCO DEFENSIVO (zone_escape="on") —
+    # aceita lateral/recuo que sai da pressao. 0.0 = igual a barra normal.
+    "pass_min_score_defthird": 0.0,
+    # A4: quantos companheiros viram valvulas de escape e o raio da busca.
+    "def_outlet_count": 2.0,
+    "def_outlet_radius": 1600.0,
+    # D1: crashers de rebote apos NOSSO chute.
+    "rebound_crashers": 2.0,
+    "rebound_zone_frac": 0.60,
+    # P2 (kickoff_play): janela da jogada ensaiada pos-reset e profundidade da
+    # corrida do recebedor (alem do meio-campo, no sentido de ataque).
+    "kickoff_window": 40.0,
+    "kickoff_run_depth": 3500.0,
+    # P3 (second_ball): apos NOSSO chute sem gol, a reposse da limpeza do GK
+    # deles acontece a ~2300-3000 do gol em ~25 turnos e ELES ganham 61-83%
+    # (deficit ~789d na corrida). Os sb_count ATACANTES nao-chasers mais
+    # proximos ocupam a zona de limpeza durante sb_window turnos.
+    "sb_count": 2.0,
+    "sb_window": 25.0,
+    "sb_dist": 2600.0,
+    "sb_y_spread": 800.0,
+    # P3 (attack_width): com posse no campo deles, os ATACANTES trocam a
+    # compressao lateral fixa (shift_y=0.35 rumo a bola) por attack_width_shift
+    # (0 = largura neutra; negativo = abre para o lado OPOSTO a bola).
+    "attack_width_shift": 0.0,
+    "attack_width_minfrac": 0.5,
+    # P4: piso radial da ancora defensiva (p10 medido = 1400 = abracado ao anel
+    # intocavel; ~0,6-0,8 corpo desperdicado). 0 = inerte (=v3).
+    "def_min_depth": 0.0,
+    # P5 (placar/tempo, consumidores novos do _game_aggr existente):
+    # perdendo tarde -> gate de chute mais frouxo (reduz shot_min_gap em ate
+    # gs_shot_scale) e +1 crasher de segunda bola; vencendo/empatando tarde com
+    # gs_retain_late=on -> retencao forcada (o mata-mata da o EMPATE ao melhor
+    # seed: proteger 0-0 e' vitoria pratica). 0/off = inerte (=v3).
+    "gs_shot_scale": 0.0,
+    # Gate adaptativo: limiares da deteccao de goleiro-elite em-jogo.
+    "ag_min_shots": 8.0,
+    "ag_max_goals": 1.0,
+    # PRORROGACAO (medido no video 17/08): apos o turno 6000 o goleiro ENCOLHE
+    # p/ ~40-45% (920->~400; alcance ~560->~260) e vale gol de ouro — chutes
+    # que o GK normal pega ENTRAM. Alivio no gate de chute em OT (0 = inerte;
+    # ~260 = o encolhimento medido). So dispara na plataforma (local nao tem OT).
+    "ot_gate_relief": 0.0,
+    # P4 (counterpress): ao PERDER a posse fora do nosso terco, cp_extra
+    # chasers a mais por cp_window turnos (corta o 1o passe deles — a fisica
+    # do nosso gol 3, invertida).
+    "cp_window": 25.0,
+    "cp_extra": 1.0,
+    "cp_min_frac": 0.33,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -150,6 +214,17 @@ DEFAULTS = {
     "gk_y_range": 1100.0,
     "gk_jump_max_turns": 6.0,         # só pula se a bola chega em <= N turnos
     "gk_clearance_speed_mult": 1.3,
+    # C1: coleta de bola solta na zona-1400 (gk_collect="on"): so bola mais
+    # lenta que isto (rapida e' caso do _goal_line_threat), e alarme do relogio
+    # da zona (40 turnos -> auto-chute ao CENTRO) a partir deste valor.
+    "gk_collect_speed_max": 60.0,
+    "gk_collect_margin": 2.0,
+    "gk_zone_alarm": 28.0,
+    # C3: saturacao do rastreio do Y do PORTADOR (gk_guard_mode="track").
+    "gk_track_div": 3000.0,
+    # C4: margem do endpoint-race e bonus de flanco do clearance seguro.
+    "gk_clear_margin": 0.0,
+    "gk_clear_w_flank": 0.0,
 
     # geral
     "pressure_radius": 2500.0,
@@ -232,6 +307,87 @@ STRUCTURE_DEFAULTS = {
     # movimentação sem bola ativa (recebedores sobem oferecendo linha).
     # "v9" = _support_offer em anel ao redor do apoiador. Default v9 = idêntico.
     "support_mode": "v9",                  # | offer
+    # --- TRANSICAO DEFENSIVA + GOLEIRO + REBOTE (pos 0-3 BotAdversario1, ago/2026).
+    # Todos default = v2 (a imagem que jogou o 0-3). ---
+    # A1: gate de risco na conducao — rota frontal bloqueada => melhor direcao
+    # LIVRE (carry.dribble_freedom) em vez de driblar para o desarme (gol 2).
+    "carry_gate": "off",                   # | on
+    # A2: veto de passe por FRONTEIRAS DE TURNO da bola, origem = bola, sem o
+    # carve-out de 700d (o presser colado na linha de saida conta — gol 3).
+    "pass_veto_mode": "v9",                # | turnwise
+    # a3.3: goleiro como receptor de reciclo no nosso terco (adversario nao
+    # entra na zona-1400 => recuo seguro por construcao).
+    "gk_outlet": "off",                    # | on
+    # a3.4: no TERCO DEFENSIVO o objetivo do passe vira SAIR da pressao:
+    # barra propria + retencao sempre habilitada.
+    "zone_escape": "off",                  # | on
+    # A4: companheiros proximos viram valvulas de escape quando o portador
+    # segura no nosso terco (abrem linha lateral/diagonal recebivel).
+    "def_outlet": "off",                   # | on
+    # B1: cobertura anti-banheira tambem em DEFENDING/DISPUTING (v2 so cobre
+    # em SUPPORTING — o camper fica solto justamente na bola livre).
+    "cover_states": "sup",                 # | all
+    # F1: bola livre no NOSSO campo => recuar como em DEFENDING (a linha da v2
+    # SOBE no instante do chute adversario — momento do rebote).
+    "disputing_mode": "v9",                # | defend
+    # C0 (sonda de laboratorio, NUNCA submeter): manda o GK a x=1200 p/
+    # falsificar "preso a linha".
+    "gk_probe": "off",                     # | on
+    # C1 v2: GK coleta bola solta lenta que ele ALCANCA (x<=560 da linha, y na
+    # boca estendida; sonda C0: preso a linha) + alarme do auto-chute.
+    "gk_collect": "off",                   # | on
+    # C1-b ARQUIVADO (screening: piorou 0,75->1,33 sofridos): 1o chaser embosca
+    # a ejecao automatica da zona. Reavaliar so vs adversario sem press.
+    "zone_ambush": "off",                  # | on
+    # C2: pulo disciplinado — so pula se o pulo ALCANCA (lockout 3 turnos).
+    "gk_jump_mode": "v9",                  # | strict
+    # C3: guard rastreia o Y do PORTADOR adversario em zona perigosa.
+    "gk_guard_mode": "v9",                 # | track
+    # C4: clearance do GK com endpoint-race + veto turnwise + preferencia de
+    # flanco + chutao imediato sob alarme da zona.
+    "gk_clear_mode": "v9",                 # | safe
+    # D1: crashers convergem ao ponto de queda apos NOSSO chute (rebote).
+    "rebound_crash": "off",                # | on
+    # L11: apoiadores tambem emitem catch (disputa da bola perdida no turno).
+    "support_catch": "off",                # | on
+    # --- PROGRAMA TATICO (2026-08-16). Default = v3. ---
+    # P2: variante das posicoes iniciais (settings.py). O reinicio e' 100%
+    # deterministico (1o toque em reset+13; empate vs classe igual) — kick9
+    # poe o #9 na MESMA distancia do centro que o #10 (tabela imediata);
+    # fine (grade 200x100) poe o #10 a ~1051 do centro (toca em reset+8).
+    "init_variant": "v3",                  # | kick9 | fine
+    # P2: playbook do kickoff (setplays.py): TAKER pega -> tabela ensaiada p/
+    # RECV -> toque pro espaco -> cascata; RECV/onda-2 correm rotas. off = v3.
+    "kickoff_play": "off",                 # | on
+    # P3: ocupar a zona de limpeza do GK deles apos nosso chute sem gol.
+    "second_ball": "off",                  # | on
+    # P3: largura dos atacantes com posse no campo deles (deslocar o GK).
+    "attack_width": "off",                 # | on
+    # P4: contrapressao em janela apos perder a posse (agressiva — adiciona
+    # corpos NA bola, compativel com a licao anti-passividade).
+    "counterpress": "off",                 # | on
+    # P5: crasher extra de segunda bola quando PERDENDO tarde (game_aggr>0.5).
+    "gs_sb_boost": "off",                  # | on
+    # P5: retencao forcada quando NAO-perdendo tarde (game_aggr<-0.5 via
+    # lead_comfortable, ou empate tardio se gs_draw_ok=on): aceita reciclo
+    # seguro em vez de risco — para jogos de chave onde o EMPATE nos basta.
+    # SEM afundar formacao (licao anti-passividade): so muda a decisao de passe.
+    "gs_retain_late": "off",               # | on
+    # P5: tratar EMPATE como resultado bom (vantagem do melhor seed na chave).
+    # Liga-se POR VERSAO antes de um jogo de mata-mata especifico.
+    "gs_draw_ok": "off",                   # | on
+    # Sombra do camper (pedido do usuario, 2026-08-16): UM unico zagueiro (o
+    # mais proximo) faz sombra goal-side APENAS no camper adversario MAIS FUNDO,
+    # so com a bola no nosso campo (DEFENDING/DISPUTING) — a versao minima da
+    # cobertura no cerco (a de 2 zagueiros em todos os estados foi rejeitada
+    # por passividade).
+    "camper_shadow": "off",                # | on
+    # GATE ADAPTATIVO (backlog A1, 2026-08-17): no dia das chaves UMA versao
+    # enfrenta L1+L2+L3, e o gate certo difere (L1 fraco=volume/threshold;
+    # L3-elite com 97,7% de defesas=slack — a v4 converteu 2,3% em 44 chutes).
+    # Com on: comeca em threshold e APERTA para slack EM-JOGO ao detectar
+    # goleiro-elite (>= ag_min_shots nossos on-goal e <= ag_max_goals gols).
+    "shot_gate_adaptive": "off",           # | on
 }
 
 # faixas admissíveis para mutação (min, max) — evita indivíduos absurdos
@@ -313,6 +469,38 @@ BOUNDS = {
     "cover_count": (0.0, 4.0),
     "cover_range": (3000.0, 12000.0),
     "cover_dist": (200.0, 1500.0),
+    "cover_lane_mix": (0.0, 1.0),
+    "carry_gate_fwd_min": (0.0, 1.0),
+    "veto_margin_turns": (0.0, 3.0),
+    "pass_min_dist_danger": (0.0, 3000.0),
+    "gk_outlet_maxfrac": (0.10, 0.60),
+    "pass_min_score_defthird": (-4000.0, 1000.0),
+    "def_outlet_count": (0.0, 4.0),
+    "def_outlet_radius": (600.0, 3000.0),
+    "rebound_crashers": (0.0, 3.0),
+    "rebound_zone_frac": (0.4, 0.9),
+    "gk_collect_speed_max": (0.0, 150.0),
+    "gk_collect_margin": (0.0, 6.0),
+    "gk_zone_alarm": (5.0, 39.0),
+    "gk_track_div": (800.0, 4000.0),
+    "gk_clear_margin": (0.0, 4.0),
+    "gk_clear_w_flank": (0.0, 3.0),
+    "kickoff_window": (10.0, 80.0),
+    "kickoff_run_depth": (1500.0, 6000.0),
+    "sb_count": (0.0, 3.0),
+    "sb_window": (5.0, 40.0),
+    "sb_dist": (1500.0, 4000.0),
+    "sb_y_spread": (0.0, 2000.0),
+    "attack_width_shift": (-0.35, 0.35),
+    "attack_width_minfrac": (0.3, 0.8),
+    "def_min_depth": (0.0, 3000.0),
+    "cp_window": (5.0, 60.0),
+    "cp_extra": (0.0, 3.0),
+    "cp_min_frac": (0.0, 0.7),
+    "gs_shot_scale": (0.0, 800.0),
+    "ag_min_shots": (3.0, 20.0),
+    "ag_max_goals": (0.0, 3.0),
+    "ot_gate_relief": (0.0, 600.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -352,6 +540,31 @@ STRUCTURE_OPTIONS = {
     "finish_mode": ["off", "on"],
     "cover_mode": ["off", "on"],
     "support_mode": ["v9", "offer"],
+    "carry_gate": ["off", "on"],
+    "pass_veto_mode": ["v9", "turnwise"],
+    "gk_outlet": ["off", "on"],
+    "zone_escape": ["off", "on"],
+    "def_outlet": ["off", "on"],
+    "cover_states": ["sup", "all"],
+    "disputing_mode": ["v9", "defend"],
+    "gk_probe": ["off", "on"],
+    "gk_collect": ["off", "on"],
+    "zone_ambush": ["off", "on"],
+    "gk_jump_mode": ["v9", "strict"],
+    "gk_guard_mode": ["v9", "track"],
+    "gk_clear_mode": ["v9", "safe"],
+    "rebound_crash": ["off", "on"],
+    "support_catch": ["off", "on"],
+    "init_variant": ["v3", "kick9", "fine", "sym"],
+    "kickoff_play": ["off", "on"],
+    "second_ball": ["off", "on"],
+    "attack_width": ["off", "on"],
+    "counterpress": ["off", "on"],
+    "gs_sb_boost": ["off", "on"],
+    "gs_retain_late": ["off", "on"],
+    "gs_draw_ok": ["off", "on"],
+    "camper_shadow": ["off", "on"],
+    "shot_gate_adaptive": ["off", "on"],
 }
 
 

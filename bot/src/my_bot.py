@@ -22,6 +22,7 @@ import planner
 import carry
 import shooting
 import finish_play
+import setplays
 from params import P
 from geometry import (BALL_MAX_SPEED, DANGEROUS_SHOT_RANGE, GOAL_MAX_Y,
                       GOAL_MIN_Y, MAX_X, MAX_Y, PLAYER_SPEED, dist,
@@ -61,9 +62,158 @@ def safe_move(inspector, me, target):
 
 class MyBot(lugo4py.Bot, ABC):
 
+    def _update_transition(self, inspector):
+        """Estado LEVE por processo (programa tático 2026-08): re-derivável do
+        snapshot (robusto a reconexão — processo novo converge em ≤1 turno).
+        NUNCA lido dentro de _best_pass (o mock do decide_dump não tem
+        snapshot/turn). Campos: _reset_turn (kickoff, P2), _last_our_hold
+        (contrapressão P4 / segunda bola P3)."""
+        try:
+            turn = inspector.get_snapshot().turn
+            ball = inspector.get_ball()
+            h = inspector.get_ball_holder()
+            held = h is not None and h.number != 0
+            # fallback do reset por assinatura (getting_ready é a via primária):
+            # bola parada no centro, sem dono
+            if (not held and ball.velocity.speed < 5
+                    and abs(ball.position.x - MAX_X / 2.0) <= 60
+                    and abs(ball.position.y - MAX_Y / 2.0) <= 60):
+                rt = getattr(self, "_reset_turn", None)
+                if rt is None or turn - rt > 30:
+                    self._reset_turn = turn
+            if held and h.team_side == inspector.get_my_team_side():
+                self._last_our_hold = turn
+            # P4 (counterpress): perda RECENTE fora do nosso terço arma a
+            # janela de contrapressão (só re-arma depois de fechada).
+            elif held:
+                lo = getattr(self, "_last_our_hold", None)
+                if (lo is not None and turn - lo <= 3
+                        and turn > getattr(self, "_cp_until", -1)
+                        and tac.ball_advance_frac(
+                            ball.position,
+                            inspector.get_my_team_side()) >= P["cp_min_frac"]):
+                    self._cp_until = turn + int(round(P["cp_window"]))
+            # P3 (second_ball): NOSSO chute detectado = bola ficou livre e
+            # rápida rumo ao gol de ataque logo após posse nossa. Se um
+            # companheiro dominar (viramos HOLDING), a janela morre sozinha.
+            elif not held and ball.velocity.speed >= 300.0:
+                lo = getattr(self, "_last_our_hold", None)
+                if lo is not None and turn - lo <= 2:
+                    gc = self.mapper.get_attack_goal().get_center()
+                    vx, vy = ball.velocity.direction.x, ball.velocity.direction.y
+                    gx, gy = gc.x - ball.position.x, gc.y - ball.position.y
+                    if (vx * gx + vy * gy > 0.0
+                            and tac.ball_advance_frac(
+                                ball.position,
+                                inspector.get_my_team_side()) > 0.5):
+                        prev = getattr(self, "_shot_turn", None)
+                        self._shot_turn = turn
+                        # contador p/ o gate adaptativo (1 por EVENTO): só conta
+                        # se a TRAJETÓRIA cruza a BOCA do gol (senão passes
+                        # longos inflam o contador — bug do 0-1 vs level-3:
+                        # 337 passes → "12 chutes" no 1º minuto → slack travado
+                        # → 3 chutes no jogo inteiro).
+                        if prev is None or turn - prev > 5:
+                            vx2, vy2 = ball.velocity.direction.x, ball.velocity.direction.y
+                            on_goal = False
+                            if abs(vx2) > 1e-9:
+                                tpar = (gc.x - ball.position.x) / (vx2 / (math.hypot(vx2, vy2) or 1.0))
+                                if tpar > 0:
+                                    y_at = ball.position.y + (vy2 / (math.hypot(vx2, vy2) or 1.0)) * tpar
+                                    d_line = abs(gc.x - ball.position.x)
+                                    on_goal = (GOAL_MIN_Y - 300 <= y_at <= GOAL_MAX_Y + 300
+                                               and d_line <= 7000.0)
+                            if on_goal:
+                                self._our_shots = getattr(self, "_our_shots", 0) + 1
+        except Exception:
+            pass                      # estado é conveniência; nunca derruba o bot
+
+    def _shadow_target(self, inspector, me, side):
+        """Sombra do camper (gene camper_shadow, pedido do usuário): UM único
+        zagueiro (o mais próximo, determinístico) cola goal-side no camper
+        adversário MAIS FUNDO — não-portador — quando a bola está no NOSSO
+        campo. Versão mínima da cobertura durante o cerco (a de 2 zagueiros em
+        todos os estados foi rejeitada por passividade). None = fluxo normal."""
+        if P.get("camper_shadow") != "on" or me.number not in tac.DEFENDERS:
+            return None
+        ball = inspector.get_ball()
+        if tac.ball_advance_frac(ball.position, side) >= 0.5:
+            return None                      # bola no campo deles: sem sombra
+        ourg = self.mapper.get_defense_goal().get_center()
+        h = inspector.get_ball_holder()
+        hnum = (h.number if (h is not None and h.number != 0
+                             and h.team_side != side) else -1)
+        opps = [o for o in inspector.get_opponent_players()
+                if o.number not in (tac.GOALKEEPER, hnum)
+                and dist(o.position, ourg) <= P["cover_range"]]
+        if not opps:
+            return None
+        alvo = min(opps, key=lambda o: (dist(o.position, ourg), o.number))
+        defs = [p for p in inspector.get_my_team_players()
+                if p.number in tac.DEFENDERS]
+        eleito = min(defs, key=lambda p: (dist(p.position, alvo.position),
+                                          p.number))
+        if eleito.number != self.number:
+            return None
+        dx, dy = ourg.x - alvo.position.x, ourg.y - alvo.position.y
+        n = math.hypot(dx, dy) or 1.0
+        cx = alvo.position.x + dx / n * P["cover_dist"]
+        cy = alvo.position.y + dy / n * P["cover_dist"]
+        gd = math.hypot(cx - ourg.x, cy - ourg.y)
+        if gd < 1400.0:
+            cx = ourg.x + (cx - ourg.x) / (gd or 1.0) * 1400.0
+            cy = ourg.y + (cy - ourg.y) / (gd or 1.0) * 1400.0
+        return point(cx, cy)
+
+    def _n_chasers(self, inspector):
+        """P4 (counterpress): nº de chasers, com o reforço temporário da janela
+        de contrapressão. off (ou fora da janela) = N_CHASERS (=v3)."""
+        n = N_CHASERS
+        if P.get("counterpress") == "on":
+            try:
+                if inspector.get_snapshot().turn <= getattr(self, "_cp_until", -1):
+                    n += int(round(P["cp_extra"]))
+            except Exception:
+                pass
+        return n
+
+    def _second_ball_target(self, inspector, me, side, chasers):
+        """P3 (second_ball): ponto de ocupação da ZONA DE LIMPEZA do goleiro
+        deles após o nosso chute sem gol (a reposse acontece a ~2300-3000 do
+        gol em ~25 turnos; hoje ELES ganham 61-83% dela). Só ATACANTES
+        não-chasers (lição da passividade). None = fluxo normal."""
+        if P.get("second_ball") != "on":
+            return None
+        st = getattr(self, "_shot_turn", None)
+        if st is None:
+            return None
+        turn = inspector.get_snapshot().turn
+        if turn < st or turn - st > P["sb_window"]:
+            return None
+        if self.number not in tac.FORWARDS:
+            return None
+        gc = self.mapper.get_attack_goal().get_center()
+        zx = gc.x - P["sb_dist"] if gc.x > MAX_X / 2 else gc.x + P["sb_dist"]
+        zone = point(zx, MAX_Y / 2.0)
+        cand = [p for p in inspector.get_my_team_players()
+                if p.number in tac.FORWARDS and p.number not in chasers]
+        cand.sort(key=lambda p: (dist(p.position, zone), p.number))
+        k = int(round(P["sb_count"]))
+        # P5 (gs_sb_boost): perdendo tarde, +1 crasher de segunda bola.
+        if (P.get("gs_sb_boost") == "on"
+                and self._game_aggr(inspector) > 0.5):
+            k += 1
+        chosen = [p.number for p in cand[:max(0, k)]]
+        if self.number not in chosen:
+            return None
+        slot = chosen.index(self.number)
+        off = (slot - (len(chosen) - 1) / 2.0) * P["sb_y_spread"]
+        return point(zx, max(600.0, min(MAX_Y - 600.0, MAX_Y / 2.0 + off)))
+
     # ---------------------------------------------------------------- posse
     def on_holding(self, inspector) -> List[lugo4py.Order]:
         try:
+            self._update_transition(inspector)
             me = inspector.get_me()
             goal = self.mapper.get_attack_goal()
             opponents = inspector.get_opponent_players()
@@ -100,6 +250,12 @@ class MyBot(lugo4py.Bot, ABC):
                 if cross is not None:
                     tgt, spd = cross
                     return [geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)]
+
+            # P2 (kickoff_play): saída ENSAIADA do reinício — tabela p/ o #9
+            # em corrida → toque pro espaço → cascata normal. off = v3.
+            ko = setplays.hold_orders(self, inspector, me, opponents)
+            if ko is not None:
+                return ko
 
             # Conducao por HIERARQUIA DE CASOS (spec do usuario) — substitui a
             # cascata v9 abaixo. off (default) => cascata v9 intacta.
@@ -217,6 +373,14 @@ class MyBot(lugo4py.Bot, ABC):
             dx, dy = ourg.x - t.position.x, ourg.y - t.position.y
             n = math.hypot(dx, dy) or 1.0
             cx, cy = t.position.x + dx / n * P["cover_dist"], t.position.y + dy / n * P["cover_dist"]
+            # B2 (cover_lane_mix): desloca o ponto na direcao da LINHA
+            # bola->camper (negacao do passe de contra-ataque), mantendo o
+            # goal-side como base. 0.0 = goal-side puro (=v2).
+            lm = P["cover_lane_mix"]
+            if lm > 0.0:
+                b = inspector.get_ball().position
+                lx, ly = (b.x + t.position.x) / 2.0, (b.y + t.position.y) / 2.0
+                cx, cy = cx + (lx - cx) * lm, cy + (ly - cy) * lm
             gd = math.hypot(cx - ourg.x, cy - ourg.y)      # nao entrar na zona 1400
             if gd < 1400.0:
                 cx = ourg.x + (cx - ourg.x) / (gd or 1.0) * 1400.0
@@ -227,16 +391,36 @@ class MyBot(lugo4py.Bot, ABC):
     # ------------------------------------------------------------ apoiando
     def on_supporting(self, inspector) -> List[lugo4py.Order]:
         try:
+            self._update_transition(inspector)
             me = inspector.get_me()
             ball = inspector.get_ball()
             holder = inspector.get_ball_holder()
             side = inspector.get_my_team_side()
 
+            # P2 (kickoff_play): rotas do RECV/onda-2 na janela do reinício.
+            ko = setplays.route_orders(self, inspector, me,
+                                       lambda t: safe_move(inspector, me, t))
+            if ko is not None:
+                return ko
+
             # Cobertura anti-banheira (cover_mode): zagueiro designado marca o
             # atacante adversario parado no nosso campo em vez de subir. off = v9.
             cov = self._cover_target(inspector, me, side)
             if cov is not None:
-                return [safe_move(inspector, me, cov)]
+                return self._sup_orders(inspector, safe_move(inspector, me, cov))
+
+            # A4 (def_outlet): companheiro segura a bola no NOSSO terco =>
+            # os mais proximos viram valvulas de escape (linha lateral/diagonal
+            # recebivel) em vez de manter formacao — cria o passe que o
+            # zone_escape aceita. off = v2.
+            if (P.get("def_outlet") == "on" and holder is not None
+                    and holder.number != 0
+                    and holder.number != tac.GOALKEEPER
+                    and tac.ball_advance_frac(holder.position, side) < 1.0 / 3.0):
+                t_out = self._def_outlet_target(inspector, me, holder, side)
+                if t_out is not None:
+                    return self._sup_orders(
+                        inspector, safe_move(inspector, me, t_out))
 
             # Caso 2 (finish_mode): corridas COORDENADAS p/ manobrar o goleiro.
             # Jogador 1 (atacante do lado contrario) corre ao ponto livre c/ angulo;
@@ -253,53 +437,74 @@ class MyBot(lugo4py.Bot, ABC):
                         j1t = finish_play.run_point(jog1, ball.position, gk, opps,
                                                     gc.x, holder.position, 6.0)
                         if me.number == jog1.number and j1t is not None:
-                            return [safe_move(inspector, me, j1t)]
+                            return self._sup_orders(
+                                inspector, safe_move(inspector, me, j1t))
                         if (jog2 is not None and me.number == jog2.number
                                 and j1t is not None):
                             rp = finish_play.relay_point(me, holder.position, j1t,
                                                          opps, gk)
-                            return [safe_move(inspector, me, rp)]
+                            return self._sup_orders(
+                                inspector, safe_move(inspector, me, rp))
 
             # posição de formação, deslocada para frente (estamos atacando)
-            base = tac.formation_position(self.number, ball.position, side,
-                                          aggression=P["aggression_support"])
+            # P3 (attack_width): com posse no campo deles, os atacantes usam a
+            # largura do gene em vez da compressão fixa. off = byte-idêntico.
+            base = tac.formation_position(
+                self.number, ball.position, side,
+                aggression=P["aggression_support"],
+                attacking=(tac.ball_advance_frac(ball.position, side)
+                           >= P["attack_width_minfrac"]))
 
             # corrida ao 2º poste (far_post_run) tem prioridade quando ligada e a
             # jogada está madura. Default off.
             if P.get("far_post_run") == "on" and holder is not None:
                 fp = self._far_post_target(inspector, holder, side)
                 if fp is not None:
-                    return [safe_move(inspector, me, fp)]
+                    return self._sup_orders(inspector,
+                                            safe_move(inspector, me, fp))
 
             if holder is None:
-                return [safe_move(inspector, me, base)]
+                return self._sup_orders(inspector,
+                                        safe_move(inspector, me, base))
 
             # apoio ATIVO (support_mode="offer"): recebedores sobem oferecendo
             # linha de passe segura; default "v9" = oferta em anel (idêntico).
             if P.get("support_mode") == "offer":
                 tgt = self._support_offer_run(inspector, holder, side, base)
-                return [safe_move(inspector, me, tgt)]
+                return self._sup_orders(inspector,
+                                        safe_move(inspector, me, tgt))
 
             # v9 (default): se perto do portador, abrir linha de passe em vez de colar
             if dist(me.position, holder.position) < P["support_near_holder"]:
                 base = self._support_offer(inspector, holder, base)
 
-            return [safe_move(inspector, me, base)]
+            return self._sup_orders(inspector, safe_move(inspector, me, base))
 
         except Exception as e:
             print(f'on_supporting: {e}')
             traceback.print_exc()
             return []
 
+    def _sup_orders(self, inspector, move_order):
+        """Ordens do apoiador. L11 (support_catch="on"): também emite catch —
+        na disputa do turno seguinte à perda do portador, os apoiadores da v2
+        não tentavam agarrar (DEFENDING/DISPUTING emitem, SUPPORTING não).
+        off = v2 (só o move)."""
+        if P.get("support_catch") == "on":
+            return [move_order, inspector.make_order_catch()]
+        return [move_order]
+
     # ----------------------------------------------------------- defendendo
     def on_defending(self, inspector) -> List[lugo4py.Order]:
         try:
+            self._update_transition(inspector)
             me = inspector.get_me()
             ball = inspector.get_ball()
             side = inspector.get_my_team_side()
-            chasers = (tac.adaptive_chasers(inspector, N_CHASERS, P["chase_margin"])
+            n_ch = self._n_chasers(inspector)   # P4: reforço da contrapressão
+            chasers = (tac.adaptive_chasers(inspector, n_ch, P["chase_margin"])
                        if P.get("chase_mode") == "adaptive"
-                       else tac.chasers(inspector, N_CHASERS))
+                       else tac.chasers(inspector, n_ch))
 
             if self.number in chasers:
                 # pressiona o portador pelo lado do nosso gol (corta o avanço)
@@ -308,10 +513,61 @@ class MyBot(lugo4py.Bot, ABC):
                 return [safe_move(inspector, me, target),
                         inspector.make_order_catch()]
 
+            # P3 (second_ball): o GK deles segura a nossa bola chutada por
+            # ~14-16 turnos DENTRO do anel (estamos DEFENDING) — é exatamente
+            # quando a formação puxava os atacantes de volta e perdíamos a
+            # corrida da segunda bola (déficit ~789d). off = v3.
+            sb = self._second_ball_target(inspector, me, side, chasers)
+            if sb is not None:
+                return [safe_move(inspector, me, sb),
+                        inspector.make_order_catch()]
+
+            # Sombra do camper (camper_shadow): 1 zagueiro cola no camper mais
+            # fundo durante o cerco (bola no nosso campo). off = v3.
+            sh = self._shadow_target(inspector, me, side)
+            if sh is not None:
+                return [safe_move(inspector, me, sh),
+                        inspector.make_order_catch()]
+
+            # B1 (cover_states="all"): a cobertura anti-banheira também vale
+            # DEFENDENDO — na v2 só em SUPPORTING, então o camper fica solto
+            # justamente quando o contra-ataque nasce. off ("sup") = v2.
+            if P.get("cover_states") == "all":
+                cov = self._cover_target(inspector, me, side)
+                if cov is not None:
+                    return [safe_move(inspector, me, cov),
+                            inspector.make_order_catch()]
+
+            # F3 (marking_mode="man"): não-chasers marcam homem-a-homem
+            # goal-side (tactics.marking_target). default "cover" = v2 (zonal).
+            if P.get("marking_mode") == "man":
+                mt = tac.marking_target(inspector, self.number)
+                if mt is not None:
+                    g = self.mapper.get_defense_goal().get_center()
+                    mdx, mdy = g.x - mt.position.x, g.y - mt.position.y
+                    n = math.hypot(mdx, mdy) or 1.0
+                    cx = mt.position.x + mdx / n * P["cover_dist"]
+                    cy = mt.position.y + mdy / n * P["cover_dist"]
+                    gd = math.hypot(cx - g.x, cy - g.y)
+                    if gd < 1400.0:
+                        cx = g.x + (cx - g.x) / (gd or 1.0) * 1400.0
+                        cy = g.y + (cy - g.y) / (gd or 1.0) * 1400.0
+                    return [safe_move(inspector, me, point(cx, cy)),
+                            inspector.make_order_catch()]
+
             # os demais recuam em formação, entre a bola e o nosso gol
             base = tac.formation_position(self.number, ball.position, side,
                                           aggression=P["aggression_defend"])
             cover = self._cover_position(inspector, base)
+            # P4 (def_min_depth): âncora do zagueiro nunca abaixo do piso —
+            # p10 medido = 1400 (abraçado ao anel intocável). 0.0 = inerte.
+            if P["def_min_depth"] > 0.0 and self.number in tac.DEFENDERS:
+                g = self.mapper.get_defense_goal().get_center()
+                gd = dist(cover, g)
+                if gd < P["def_min_depth"]:
+                    cover = point(
+                        g.x + (cover.x - g.x) / (gd or 1.0) * P["def_min_depth"],
+                        g.y + (cover.y - g.y) / (gd or 1.0) * P["def_min_depth"])
             return [safe_move(inspector, me, cover),
                     inspector.make_order_catch()]
 
@@ -323,12 +579,14 @@ class MyBot(lugo4py.Bot, ABC):
     # ---------------------------------------------------------- disputando
     def on_disputing(self, inspector) -> List[lugo4py.Order]:
         try:
+            self._update_transition(inspector)
             me = inspector.get_me()
             ball = inspector.get_ball()
             side = inspector.get_my_team_side()
-            chasers = (tac.adaptive_chasers(inspector, N_CHASERS, P["chase_margin"])
+            n_ch = self._n_chasers(inspector)   # P4: reforço da contrapressão
+            chasers = (tac.adaptive_chasers(inspector, n_ch, P["chase_margin"])
                        if P.get("chase_mode") == "adaptive"
-                       else tac.chasers(inspector, N_CHASERS))
+                       else tac.chasers(inspector, n_ch))
 
             if self.number in chasers:
                 r = geo.intercept_turn(me.position, ball)
@@ -336,8 +594,64 @@ class MyBot(lugo4py.Bot, ABC):
                 return [safe_move(inspector, me, target),
                         inspector.make_order_catch()]
 
+            # P2 (kickoff_play): não-chasers do playbook pré-correm as rotas
+            # durante a corrida do reinício (o TAKER é chaser e persegue normal).
+            ko = setplays.route_orders(self, inspector, me,
+                                       lambda t: safe_move(inspector, me, t))
+            if ko is not None:
+                return ko
+
+            # P3 (second_ball): ocupar a zona de limpeza do GK deles enquanto a
+            # bola do nosso chute está viva/na mão dele. off = v3.
+            sb = self._second_ball_target(inspector, me, side, chasers)
+            if sb is not None:
+                return [safe_move(inspector, me, sb),
+                        inspector.make_order_catch()]
+
+            # C1-b (zone_ambush — ARQUIVADO, default off): emboscar a ejeção da
+            # zona (auto-chute dos 40 turnos rumo ao centro) com o 1º chaser.
+            # Screening: PIOROU muito (sofridos 0,75→1,33; o emboscador captura
+            # fundo demais e é engolido pelo press; um chaser a menos disputa).
+            # Fica como gene para eventual reavaliação vs adversário sem press.
+            if P.get("zone_ambush") == "on" and self.number in chasers:
+                ap = self._autokick_ambush(inspector, me, ball, chasers)
+                if ap is not None:
+                    return [safe_move(inspector, me, ap),
+                            inspector.make_order_catch()]
+
+            # D1 (rebound_crash): após NOSSO chute (bola livre, rápida, rumo ao
+            # gol deles, no terço de ataque), crashers convergem ao ponto de
+            # queda para a segunda bola em vez de recuar à formação. off = v2.
+            if P.get("rebound_crash") == "on":
+                rt = self._rebound_target(inspector, me, ball, side, chasers)
+                if rt is not None:
+                    return [safe_move(inspector, me, rt),
+                            inspector.make_order_catch()]
+
+            # Sombra do camper (camper_shadow) também na bola livre. off = v3.
+            sh = self._shadow_target(inspector, me, side)
+            if sh is not None:
+                return [safe_move(inspector, me, sh),
+                        inspector.make_order_catch()]
+
+            # B1 (cover_states="all"): camper marcado também na bola livre —
+            # o gol 1 vs BotAdversario1 nasceu de bola solta com o camper sozinho.
+            if P.get("cover_states") == "all":
+                cov = self._cover_target(inspector, me, side)
+                if cov is not None:
+                    return [safe_move(inspector, me, cov),
+                            inspector.make_order_catch()]
+
             base = tac.formation_position(self.number, ball.position, side,
                                           aggression=0.0)
+            # F1 (disputing_mode="defend"): bola livre no NOSSO campo = momento
+            # do rebote adversário; recuar como em DEFENDING (na v2 a linha
+            # SOBE no instante do chute deles: aggression 0.0 sem recuo).
+            if (P.get("disputing_mode") == "defend"
+                    and tac.ball_advance_frac(ball.position, side) < 0.5):
+                base = tac.formation_position(self.number, ball.position, side,
+                                              aggression=P["aggression_defend"])
+                base = self._cover_position(inspector, base)
             return [safe_move(inspector, me, base),
                     inspector.make_order_catch()]
 
@@ -360,6 +674,26 @@ class MyBot(lugo4py.Bot, ABC):
                 if pass_order is not None:
                     return [pass_order]
 
+            # C0 (gk_probe — sonda de laboratório, NUNCA submeter): falsifica
+            # "goleiro preso à linha" pedindo x=1200 nos turnos 100-300.
+            if P.get("gk_probe") == "on":
+                t_now = inspector.get_snapshot().turn
+                if 100 <= t_now <= 300:
+                    px = 1200.0 if goal_center.x < MAX_X / 2 else MAX_X - 1200.0
+                    return [safe_move(inspector, me, point(px, goal_center.y)),
+                            inspector.make_order_catch()]
+
+            # C1 (gk_collect): bola SOLTA e lenta na NOSSA zona-1400 — onde SÓ
+            # o goleiro entra — deve ser coletada, não observada da linha (gol
+            # 1 vs BotAdversario1: rebote parado é invisível ao _goal_line_threat, que
+            # exige speed>5). Também dispara pelo alarme do relógio da zona
+            # (40 turnos ⇒ auto-chute ao CENTRO ≈390 = rebote servido). off=v2.
+            if P.get("gk_collect") == "on":
+                col = self._gk_collect_target(inspector, goal_center)
+                if col is not None:
+                    return [safe_move(inspector, me, col),
+                            inspector.make_order_catch()]
+
             # onde a bola cruza a linha do gol
             threat = self._goal_line_threat(inspector, goal_center)
             if threat is not None:
@@ -367,6 +701,16 @@ class MyBot(lugo4py.Bot, ABC):
                 d = dist(me.position, cross_point)
                 # não dá para chegar andando: pular (trava 3 turnos, usar por último)
                 if turns_for_player(d) > turns and turns <= P["gk_jump_max_turns"]:
+                    # C2 (gk_jump_mode="strict"): só pula se o PULO alcança de
+                    # fato — 200/turno×3 (lockout não interrompível) + 100
+                    # depois. Pulo perdido = 3 turnos travado fora de posição
+                    # (o rebote do gol 1 pega o goleiro plantado). off = v2.
+                    if P.get("gk_jump_mode") == "strict":
+                        jump_reach = (200.0 * min(turns, 3.0)
+                                      + 100.0 * max(0.0, turns - 3.0))
+                        if d - geo.GOALKEEPER_HALF_EXTENT > jump_reach:
+                            return [safe_move(inspector, me, cross_point),
+                                    inspector.make_order_catch()]
                     return [inspector.make_order_jump(
                         cross_point, lugo4py.GOALKEEPER_JUMP_SPEED),
                         inspector.make_order_catch()]
@@ -384,7 +728,12 @@ class MyBot(lugo4py.Bot, ABC):
             return []
 
     def getting_ready(self, snapshot):
-        pass
+        # P2: marca o reinício (dispara no início E após cada gol). O playbook
+        # (setplays) só age com kickoff_play="on"; gravar o turno é inerte.
+        try:
+            self._reset_turn = snapshot.turn
+        except Exception:
+            pass
 
     # ================================================================ ajuda
 
@@ -401,6 +750,37 @@ class MyBot(lugo4py.Bot, ABC):
 
         best = None
         best_score = -1.0
+        # P5 (gs_shot_scale): PERDENDO tarde (game_aggr>0, exige
+        # game_state_mode=on), o gate de chute afrouxa em ate gs_shot_scale —
+        # atras no placar, chute "quase bom" + segunda bola > nao chutar.
+        gap_relief = 0.0
+        if P["gs_shot_scale"] > 0.0:
+            ga_ = self._game_aggr(inspector)
+            if ga_ > 0.0:
+                gap_relief = ga_ * P["gs_shot_scale"]
+        # PRORROGAÇÃO (gol de ouro, goleiro ~40% do tamanho — medido): depois
+        # do turno 6000 o gate afrouxa em ot_gate_relief. 0.0 = inerte (=v4/v5);
+        # localmente nunca dispara (partidas terminam em 6000).
+        if P["ot_gate_relief"] > 0.0:
+            try:
+                if inspector.get_snapshot().turn > 6000:
+                    gap_relief += P["ot_gate_relief"]
+            except Exception:
+                pass
+
+        # GATE ADAPTATIVO (shot_gate_adaptive): goleiro-elite detectado EM-JOGO
+        # (muitos chutes nossos, quase nenhum gol) => aperta threshold->slack.
+        # Motivo: no dia das chaves UMA versao joga L1+L2+L3, e o gate certo
+        # difere (L1 fraco=volume; L3-elite=97,7% defesas, 2,3% de conversao da
+        # v4 em 44 chutes). off = gate estatico (=v4).
+        gate_mode = P.get("shot_gate")
+        if P.get("shot_gate_adaptive") == "on" and gate_mode == "threshold":
+            try:
+                if (getattr(self, "_our_shots", 0) >= P["ag_min_shots"]
+                        and inspector.get_my_team().score <= P["ag_max_goals"]):
+                    gate_mode = "slack"
+            except Exception:
+                pass
         # amostra a boca do gol, evitando as traves
         for i in range(9):
             frac = i / 8
@@ -447,7 +827,7 @@ class MyBot(lugo4py.Bot, ABC):
             #   > 1800  -> 45%
             # Chutar com folga pequena é desperdício; exigir folga demais faz o
             # bot nunca chutar. O limiar é um gene, para a evolução ajustá-lo.
-            if P.get("shot_gate") == "slack" and gk is not None:
+            if gate_mode == "slack" and gk is not None:
                 # gate TEMPORAL calibrado: folga do alvo ao goleiro MENOS o quanto
                 # ele cobre em t turnos (560 + gk_reach_speed·t). gk_reach_speed=75
                 # calibrado (AUC 0.87 vs gol; slack>0 converte 43%, <=0 converte 0%).
@@ -455,10 +835,10 @@ class MyBot(lugo4py.Bot, ABC):
                 if t_ball == math.inf:
                     continue
                 slack = abs(target.y - gk.position.y) - (560.0 + P["gk_reach_speed"] * t_ball)
-                if slack <= P["shot_min_slack"]:
+                if slack <= P["shot_min_slack"] - gap_relief:
                     continue
                 score = slack
-            elif P.get("shot_gate") == "xg" and fin.available():
+            elif gate_mode == "xg" and fin.available():
                 # modelo xG: mesmas features do treino (reta bola->alvo).
                 # dist_line = d (alvo na linha do gol); ycross = target.y.
                 ux, uy = target.x - me.position.x, target.y - me.position.y
@@ -479,7 +859,7 @@ class MyBot(lugo4py.Bot, ABC):
                 score = p_goal
             elif gk is not None:
                 gap = abs(gk.position.y - target.y)
-                if gap < P["shot_min_gap"]:
+                if gap < P["shot_min_gap"] - gap_relief:
                     continue
                 score = gap - P["shot_gk_penalty"] * d
             else:
@@ -522,6 +902,31 @@ class MyBot(lugo4py.Bot, ABC):
         my_gain = dist(me.position, goal_center)
         pressure = self._pressure_on(me.position, opponents)
 
+        # a3.4 (zone_escape): no TERCO DEFENSIVO o objetivo do passe vira SAIR
+        # da pressao (gols 2/3 vs BotAdversario1): barra propria, retencao sempre
+        # habilitada e fallback liberado. off = v2 (flag nunca liga).
+        side = inspector.get_my_team_side()
+        zone_escape_on = (P.get("zone_escape") == "on"
+                          and tac.ball_advance_frac(me.position, side) < 1.0 / 3.0)
+
+        # P5 (gs_retain_late/gs_draw_ok): NAO-perdendo no fim de jogo, proteger
+        # o resultado — retencao habilitada (reciclo seguro em vez de risco).
+        # No mata-mata o EMPATE e' do melhor seed: gs_draw_ok liga-se POR
+        # VERSAO antes desses jogos. off = inerte (nem le placar/turno).
+        late_protect = False
+        if P.get("gs_retain_late") == "on":
+            if game_aggr < -0.5:
+                late_protect = True
+            elif P.get("gs_draw_ok") == "on":
+                try:
+                    margin = (inspector.get_my_team().score
+                              - inspector.get_opponent_team().score)
+                    L = max(1.0, P["late_game_turns"])
+                    if margin >= 0 and inspector.get_turn() >= 6000.0 - L:
+                        late_protect = True
+                except Exception:
+                    pass
+
         # Componente 1 ("quando passar"): status do portador (livre/atencao/
         # perigo) pela banda de turnos ate o adversario mais proximo. off => v9.
         status_on = P.get("pass_status_mode") == "on"
@@ -551,14 +956,31 @@ class MyBot(lugo4py.Bot, ABC):
                           "perigo": P["pass_min_score_danger"]}[holder_state]
         if P.get("game_state_mode") == "on":     # Comp 3: perseguir baixa a barra
             best_score -= game_aggr * P["game_aggr_scale"]
+        if zone_escape_on:                       # a3.4: barra do terco defensivo
+            best_score = min(best_score, P["pass_min_score_defthird"])
         retain = None
         retain_score = -1e18
 
+        # a3.2: sob marcacao/no terco defensivo o passe CURTO vira legal (o
+        # escape de 450d existe; a v2 exigia >=800 sempre). 0.0 = inerte (=v2).
+        min_pass_d = P["pass_min_dist"]
+        if P["pass_min_dist_danger"] > 0.0 and (
+                zone_escape_on
+                or (status_on and holder_state in ("atencao", "perigo"))):
+            min_pass_d = min(min_pass_d, P["pass_min_dist_danger"])
+
         for mate in mates:
             if mate.number == tac.GOALKEEPER:
-                continue
+                # a3.3 (gk_outlet): goleiro como valvula de reciclo no NOSSO
+                # terco com o portador marcado — o adversario nao entra na
+                # zona-1400, entao o recuo e' seguro por construcao. off = v2.
+                if not (P.get("gk_outlet") == "on"
+                        and status_on and holder_state != "livre"
+                        and tac.ball_advance_frac(me.position, side)
+                        < P["gk_outlet_maxfrac"]):
+                    continue
             d = dist(me.position, mate.position)
-            if d < P["pass_min_dist"] or d > geo.MAX_KICK_RANGE:
+            if d < min_pass_d or d > geo.MAX_KICK_RANGE:
                 continue
 
             speed = min(BALL_MAX_SPEED, speed_for_distance(d) * P["pass_speed_mult"])
@@ -574,6 +996,11 @@ class MyBot(lugo4py.Bot, ABC):
             if t_ball == math.inf:
                 continue
             target = lead_target(mate, t_ball)
+            if mate.number == tac.GOALKEEPER:
+                # a3.3: nunca mirar NA linha do gol (bola perdida = gol contra);
+                # alvo deslocado 350d para dentro do campo, na frente do GK.
+                inward = 350.0 if side == lugo4py.TeamSide.HOME else -350.0
+                target = point(target.x + inward, target.y)
 
             # Fase A — reforço cirúrgico #1: segurança com a velocidade REALMENTE
             # executada. kick_to pode entregar menos que a planejada (redução por
@@ -603,6 +1030,14 @@ class MyBot(lugo4py.Bot, ABC):
             if P["pass_w_intercept"] > 0.0:
                 r = intercept_risk(me.position, target, opponents, kick_speed, USE_VELOCITY)
                 if r <= 0.0:
+                    continue
+            elif P.get("pass_veto_mode") == "turnwise":
+                # A2: veto por fronteiras de turno, origem = BOLA (o chute sai
+                # dela, ~200 a frente), SEM o carve-out de 700d — o presser
+                # colado na linha de saida conta (gol 3 vs BotAdversario1). off = v2.
+                if geo.intercept_slack_turnwise(
+                        inspector.get_ball().position, target, opponents,
+                        kick_speed) <= P["veto_margin_turns"]:
                     continue
             elif can_be_intercepted(me.position, target, opponents, kick_speed, USE_VELOCITY):
                 continue
@@ -670,7 +1105,8 @@ class MyBot(lugo4py.Bot, ABC):
             # LIMITADO por pass_retain_backmax. Habilitado por pass_retain="on" OU
             # (Componente 1) portador em atencao/perigo (escape seguro).
             retain_enabled = (P.get("pass_retain") == "on"
-                              or (status_on and holder_state in ("atencao", "perigo")))
+                              or (status_on and holder_state in ("atencao", "perigo"))
+                              or zone_escape_on or late_protect)
             if retain_enabled and advance > -P["pass_retain_backmax"]:
                 rscore = (clearance
                           + P["pass_retain_advance_w"] * advance
@@ -685,7 +1121,8 @@ class MyBot(lugo4py.Bot, ABC):
             if score > best_score:
                 best_score, best = score, (target, speed)
 
-        if best is None and under_pressure and retain is not None:
+        if best is None and (under_pressure or zone_escape_on
+                             or late_protect) and retain is not None:
             best = retain
         if best is None:
             return None
@@ -728,6 +1165,33 @@ class MyBot(lugo4py.Bot, ABC):
     def _carry_target(self, inspector, goal_center, opponents):
         """Para onde conduzir a bola, desviando do adversário mais próximo."""
         me = inspector.get_me()
+        # A1 (carry_gate): a repulsão abaixo só desvia de adversário a <334d —
+        # com a rota ao gol BLOQUEADA o portador dribla direto para o desarme
+        # (gol 2 vs BotAdversario1: #4 conduziu no presser #8). v2 do gene (a v1, que
+        # usava best_free puro, RECUAVA para o canto sob pressing: escape do
+        # terço 37%→20% no screening — rejeitada): com a área frontal abaixo da
+        # barra, (a) prefere o MELHOR endpoint seguro rumo-ao-gol (best_fwd =
+        # enfiar-se com segurança); (b) senão aceita a melhor direção livre SÓ
+        # se ela não recua (componente ao gol >= -0.25); (c) senão carrega no
+        # caminho v9 (a coragem da base vale mais que a fuga p/ a armadilha).
+        # off = v2 (nem computa).
+        if P.get("carry_gate") == "on":
+            fr = carry.dribble_freedom(me.position, opponents,
+                                       inspector.get_opponent_goalkeeper(),
+                                       goal_center)
+            if fr["fwd"] <= P["carry_gate_fwd_min"]:
+                tgt = fr["best_fwd"]
+                if tgt is None and fr["best_free"] is not None:
+                    bf = fr["best_free"]
+                    gdx = goal_center.x - me.position.x
+                    gdy = goal_center.y - me.position.y
+                    gn = math.hypot(gdx, gdy) or 1.0
+                    sx, sy = bf.x - me.position.x, bf.y - me.position.y
+                    sn = math.hypot(sx, sy) or 1.0
+                    if (sx * gdx + sy * gdy) / (gn * sn) >= -0.25:
+                        tgt = bf
+                if tgt is not None:
+                    return tgt
         # direção base: o gol
         dx = goal_center.x - me.position.x
         dy = goal_center.y - me.position.y
@@ -921,6 +1385,151 @@ class MyBot(lugo4py.Bot, ABC):
         inward = -1400.0 if goal_center.x > MAX_X / 2 else 1400.0
         return point(goal_center.x + inward, far_y)
 
+    def _def_outlet_target(self, inspector, me, holder, side):
+        """A4 (def_outlet): ponto de recepção de ESCAPE quando um companheiro
+        segura a bola no NOSSO terço. Elegíveis: os `def_outlet_count` de linha
+        mais próximos do portador (desempate por número — determinístico, todos
+        calculam igual). Cada elegível varre meio-anel próprio (1º = metade
+        superior, 2º = inferior — sem colisão de destino) de raio
+        `def_outlet_radius` ao redor do portador; exige não afundar atrás do
+        portador, ponto dentro do campo e linha BOLA→ponto não interceptável.
+        Score = folga da linha − pressão no destino + leve avanço."""
+        mates = [p for p in inspector.get_my_team_players()
+                 if p.number not in (tac.GOALKEEPER, holder.number)]
+        mates.sort(key=lambda p: (dist(p.position, holder.position), p.number))
+        k = int(round(P["def_outlet_count"]))
+        elig = [p.number for p in mates[:max(0, k)]]
+        if me.number not in elig:
+            return None
+        slot = elig.index(me.number)
+        opponents = list(inspector.get_opponent_players())
+        ball = inspector.get_ball()
+        dir_sign = 1.0 if side == lugo4py.TeamSide.HOME else -1.0
+        radius = P["def_outlet_radius"]
+        best, best_score = None, -1e18
+        for ang in range(0, 360, 30):
+            a = math.radians(ang)
+            sy = math.sin(a)
+            if slot == 0 and sy < -0.01:        # 1º elegível: metade superior
+                continue
+            if slot == 1 and sy > 0.01:         # 2º elegível: metade inferior
+                continue
+            cand = point(holder.position.x + math.cos(a) * radius,
+                         holder.position.y + sy * radius)
+            if not (300.0 <= cand.x <= MAX_X - 300.0
+                    and 300.0 <= cand.y <= MAX_Y - 300.0):
+                continue
+            if dir_sign * (cand.x - holder.position.x) < -300.0:
+                continue                        # não afundar atrás do portador
+            pd = dist(holder.position, cand)
+            spd = min(BALL_MAX_SPEED, speed_for_distance(pd) * P["pass_speed_mult"])
+            if can_be_intercepted(ball.position, cand, opponents, spd,
+                                  USE_VELOCITY):
+                continue
+            clear = lane_clearance(ball.position, cand, opponents)
+            press = self._pressure_on(cand, opponents)
+            score = (clear - 1200.0 * press
+                     + 0.3 * dir_sign * (cand.x - holder.position.x))
+            if score > best_score:
+                best_score, best = score, cand
+        return best
+
+    def _gk_collect_target(self, inspector, goal_center):
+        """C1 v2 (gk_collect): alvo de coleta do goleiro — SÓ o que ele
+        alcança DE VERDADE (sonda C0: preso à linha, anda só em y). Bola SEM
+        DONO, lenta, a ≤560 da linha (raio de pegada) e com y dentro da boca
+        estendida — alinhar o y e agarrar. A v1 (zona inteira + emboscada do
+        chaser) PIOROU no screening e virou o gene arquivado zone_ambush.
+        None = sem coleta (segue o fluxo normal)."""
+        ball = inspector.get_ball()
+        h = inspector.get_ball_holder()
+        if h is not None and h.number != 0:
+            return None                          # bola tem dono
+        if abs(ball.position.x - goal_center.x) > geo.GOALKEEPER_HALF_EXTENT:
+            return None                          # fundo demais: inalcançável (x travado)
+        if not (GOAL_MIN_Y - 700.0 <= ball.position.y <= GOAL_MAX_Y + 700.0):
+            return None                          # longe da boca: deixar p/ a linha
+        zone_t = getattr(inspector.get_snapshot(), "turns_ball_in_goal_zone", 0)
+        urgent = zone_t >= P["gk_zone_alarm"]
+        if ball.velocity.speed > P["gk_collect_speed_max"] and not urgent:
+            return None                          # bola rápida: _goal_line_threat cuida
+        return point(goal_center.x, ball.position.y)
+
+    def _autokick_ambush(self, inspector, me, ball, chasers):
+        """C1-b: ponto de emboscada da ejeção automática da zona do gol. Só
+        para bola SOLTA dentro da NOSSA zona-1400 e além do alcance em x do
+        goleiro (x>~560 da linha, onde nem ele chega — sonda C0: GK travado em
+        x). O auto-chute dos 40 turnos mira o CENTRO do campo (10000,5000)
+        [MEDIDO]; plantar o 1º chaser no segmento bola->centro a 1450 do centro
+        do NOSSO gol captura a saída. None = não se aplica."""
+        h = inspector.get_ball_holder()
+        if h is not None and h.number != 0:
+            return None
+        our_goal = self.mapper.get_defense_goal().get_center()
+        d_zone = dist(ball.position, our_goal)
+        if d_zone > 1380.0:
+            return None                       # fora da nossa zona
+        depth_x = abs(ball.position.x - our_goal.x)
+        if depth_x <= geo.GOALKEEPER_HALF_EXTENT - 60.0:
+            return None                       # goleiro alcança (alinha y+catch)
+        # só o chaser MAIS PRÓXIMO da bola embosca; o 2º segue o fluxo normal
+        if chasers and self.number != chasers[0]:
+            return None
+        cx, cy = MAX_X / 2.0, MAX_Y / 2.0     # alvo medido do auto-chute
+        vx, vy = cx - ball.position.x, cy - ball.position.y
+        n = math.hypot(vx, vy) or 1.0
+        # ponto no segmento bola->centro a 1450 do centro do nosso gol
+        lo, hi = 0.0, 1.0
+        for _ in range(24):                   # bisseção: cruza o anel de 1400
+            mid = (lo + hi) / 2.0
+            px = ball.position.x + vx * mid
+            py = ball.position.y + vy * mid
+            if math.hypot(px - our_goal.x, py - our_goal.y) < 1450.0:
+                lo = mid
+            else:
+                hi = mid
+        px = ball.position.x + vx * hi
+        py = ball.position.y + vy * hi
+        return point(px, py)
+
+    def _rebound_target(self, inspector, me, ball, side, chasers):
+        """D1 (rebound_crash): ponto de convergência para a SEGUNDA BOLA após
+        o nosso chute. Só com bola livre rápida rumo ao gol adversário e já no
+        terço de ataque. Ponto de queda = fim de ball_trajectory, clampado FORA
+        da zona-1400 deles (jogador de linha não entra). Os
+        `rebound_crashers` meias/atacantes não-chasers mais próximos convergem,
+        espalhados em y por slot. None = não sou crasher."""
+        if (self.number not in tac.MIDFIELDERS
+                and self.number not in tac.FORWARDS):
+            return None
+        if ball.velocity.speed < 150.0:
+            return None
+        if tac.ball_advance_frac(ball.position, side) < P["rebound_zone_frac"]:
+            return None
+        goal_center = self.mapper.get_attack_goal().get_center()
+        vx, vy = ball.velocity.direction.x, ball.velocity.direction.y
+        gx, gy = goal_center.x - ball.position.x, goal_center.y - ball.position.y
+        if vx * gx + vy * gy <= 0.0:
+            return None                          # não vai na direção do gol deles
+        traj = geo.ball_trajectory(ball, max_turns=40)
+        _t, ex, ey = traj[-1]
+        dgo = math.hypot(ex - goal_center.x, ey - goal_center.y)
+        if dgo < 1500.0:                          # fora da zona deles
+            ex = goal_center.x + (ex - goal_center.x) / (dgo or 1.0) * 1500.0
+            ey = goal_center.y + (ey - goal_center.y) / (dgo or 1.0) * 1500.0
+        drop = point(ex, ey)
+        cand = [p for p in inspector.get_my_team_players()
+                if p.number not in chasers and p.number != tac.GOALKEEPER
+                and (p.number in tac.MIDFIELDERS or p.number in tac.FORWARDS)]
+        cand.sort(key=lambda p: (dist(p.position, drop), p.number))
+        k = int(round(P["rebound_crashers"]))
+        chosen = [p.number for p in cand[:max(0, k)]]
+        if self.number not in chosen:
+            return None
+        slot = chosen.index(self.number)
+        off = (slot - (len(chosen) - 1) / 2.0) * 800.0
+        return point(ex, max(300.0, min(MAX_Y - 300.0, ey + off)))
+
     def _cover_position(self, inspector, base):
         """Posição defensiva: entre a bola e o nosso gol, perto do posto."""
         ball = inspector.get_ball()
@@ -952,9 +1561,21 @@ class MyBot(lugo4py.Bot, ABC):
     def _guard_position(self, inspector, goal_center):
         """Posição de espera do goleiro: na bissetriz bola-gol, perto da linha."""
         ball = inspector.get_ball()
-        dy = ball.position.y - goal_center.y
+        ref_y = ball.position.y
+        div = 3000.0
+        # C3 (gk_guard_mode="track"): com o ADVERSÁRIO segurando em zona
+        # perigosa, a linha de chute nasce no PORTADOR — alinhar ao y dele com
+        # saturação mais curta (gk_track_div), não ao da bola amortecido. off=v2.
+        if P.get("gk_guard_mode") == "track":
+            h = inspector.get_ball_holder()
+            if (h is not None and h.number != 0
+                    and h.team_side != inspector.get_my_team_side()
+                    and dist(h.position, goal_center) <= P["dangerous_shot_range"]):
+                ref_y = h.position.y
+                div = P["gk_track_div"]
+        dy = ref_y - goal_center.y
         # segue a bola em y, limitado à boca do gol
-        y = goal_center.y + max(-1.0, min(1.0, dy / 3000.0)) * P["gk_y_range"]
+        y = goal_center.y + max(-1.0, min(1.0, dy / div)) * P["gk_y_range"]
         y = max(GOAL_MIN_Y + 150, min(GOAL_MAX_Y - 150, y))
         # sai um pouco da linha para fechar o ângulo quando a bola está longe
         # O servidor mantém o goleiro preso à linha (x observado ∈ {0, 20000}),
@@ -970,6 +1591,19 @@ class MyBot(lugo4py.Bot, ABC):
         mates = [p for p in inspector.get_my_team_players()
                  if p.number != self.number]
 
+        # C4 (gk_clear_mode="safe"): se o relógio da zona está prestes a
+        # estourar (40 turnos ⇒ auto-chute ao CENTRO = rebote servido ao
+        # camper), chutão de flanco IMEDIATO — nunca esperar o auto-chute.
+        safe_mode = P.get("gk_clear_mode") == "safe"
+        if safe_mode:
+            zone_t = getattr(inspector.get_snapshot(),
+                             "turns_ball_in_goal_zone", 0)
+            if zone_t >= P["gk_zone_alarm"]:
+                far_y = 500 if me.position.y > MAX_Y / 2 else MAX_Y - 500
+                target = point(goal_center.x * 0.35 + me.position.x * 0.65, far_y)
+                return geo.kick_to(inspector, me, inspector.get_ball(), target,
+                                   BALL_MAX_SPEED)
+
         best, best_score = None, -1e18
         for mate in mates:
             d = dist(me.position, mate.position)
@@ -980,10 +1614,24 @@ class MyBot(lugo4py.Bot, ABC):
             if t_ball == math.inf:
                 continue
             target = lead_target(mate, t_ball)
-            if opponent_can_intercept(me.position, target, opponents, speed):
+            if safe_mode:
+                # C4: corrida no destino (padrão pass_endpoint_race) + veto por
+                # fronteiras de turno com origem na bola — o veto v2 (estático,
+                # cego a <700d) deixava a saída do goleiro ser interceptada.
+                t_recv = turns_for_player(dist(mate.position, target))
+                if any(turns_for_player(dist(o.position, target))
+                       <= t_recv + P["gk_clear_margin"] for o in opponents):
+                    continue
+                if geo.intercept_slack_turnwise(
+                        inspector.get_ball().position, target, opponents,
+                        speed) <= 0.0:
+                    continue
+            elif opponent_can_intercept(me.position, target, opponents, speed):
                 continue
             score = -dist(target, goal_center) + 1.5 * lane_clearance(
                 me.position, target, opponents)
+            if safe_mode:
+                score += P["gk_clear_w_flank"] * abs(target.y - MAX_Y / 2.0)
             if score > best_score:
                 best_score, best = score, (target, speed)
 

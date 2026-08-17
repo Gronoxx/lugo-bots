@@ -71,6 +71,12 @@ def best_goal_shot(ball_pos, goal_x, gk, opponents, gk_reach_speed,
     (gol praticamente certo)."""
     bx, by = ball_pos.x, ball_pos.y
     gk_y = gk.position.y if gk is not None else (GOAL_LO + GOAL_HI) / 2.0
+    # Conserto (P1, 2026-08-16): o veto de interceptacao NAO conta o goleiro —
+    # ele ja e' modelado por shot_slack (contar nos dois = dupla contagem que
+    # fechava o Caso 1 quase sempre: o GK parado na linha "intercepta" qualquer
+    # chute on-target). Mesmo padrao de _best_shot_target (my_bot).
+    gkn = gk.number if gk is not None else -1
+    line_opps = [o for o in opponents if o.number != gkn]
     best = None
     for i in range(n_targets):
         ty = GOAL_LO + 150 + i * (GOAL_HI - GOAL_LO - 300) / (n_targets - 1)
@@ -84,8 +90,8 @@ def best_goal_shot(ball_pos, goal_x, gk, opponents, gk_reach_speed,
         # goleiro no fim do voo: desliza rumo a mira
         gk_end = keeper_expected_y(gk_y, ty, t_ball)
         sl = shot_slack(ty, gk_end, t_ball, gk_reach_speed)
-        # linha livre de adversarios (chute nao interceptado)
-        if geo.can_be_intercepted(ball_pos, tgt, opponents, v0, False):
+        # linha livre de adversarios de LINHA (chute nao interceptado)
+        if geo.can_be_intercepted(ball_pos, tgt, line_opps, v0, False):
             continue
         if best is None or sl > best[1]:
             best = (tgt, sl, t_ball)

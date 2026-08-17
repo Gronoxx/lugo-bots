@@ -31,21 +31,92 @@ import urllib.request
 from collections import defaultdict
 
 BASE = "https://lugobots.ai/bots/"
+MATCH_URL = "https://lugobots.ai/matches/{}/watch"
 UA = "Mozilla/5.0 (compatible; lugo-analysis/1.0)"
 DEFAULT_LEVELS = ["level-0", "level-1", "level-2", "level-3"]
+
+# Rótulos da tabela `statistics-table` da página /matches/<id>/watch → chave.
+# (12 stats por partida; validado contra a partida partida-01 = 0-3 vs BotAdversario1.)
+STAT_KEYS = {
+    "Ball Gross Possession": "poss_bruta",
+    "Ball Net Possession": "poss_liquida",
+    "On Opponent Field": "campo_adv",
+    "Goal Attempts": "finalizacoes",
+    "Goalkeeper Saves": "defesas_gk",
+    "Goalkeeper Save Percentage": "defesas_pct",
+    "Good Passes": "passes_bons",
+    "Bad Passes": "passes_ruins",
+    "Pass Accuracy": "acerto_passe",
+    "Ball Steals": "roubadas",
+}
 
 
 def fetch(handle, page, retries=3):
     url = f"{BASE}{handle}?page={page}"
+    return _get(url, retries)
+
+
+def _get(url, retries=3, timeout=30):
     for attempt in range(retries):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA})
-            with urllib.request.urlopen(req, timeout=30) as r:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
                 return r.read().decode("utf-8", "replace")
         except Exception:
             if attempt == retries - 1:
                 raise
             time.sleep(1.5 * (attempt + 1))
+
+
+def fetch_match(mid, retries=3):
+    """HTML da página de uma partida (/matches/<id>/watch)."""
+    return _get(MATCH_URL.format(mid), retries)
+
+
+def parse_match_stats(text):
+    """Stats por partida da página watch: {chave: (valor_home, valor_away)}.
+
+    A tabela é `<table class="statistics-table">` com linhas
+    `<td>home</td><td>Rótulo</td><td>away</td>`. Percentuais ficam como string
+    ("44.7%"); contagens viram int.
+    """
+    seg = re.search(r'<table class="statistics-table">(.*?)</table>', text, re.S)
+    if not seg:
+        return {}
+    out = {}
+    for m in re.finditer(r'<tr>\s*<td>([^<]*)</td>\s*<td>([^<]*)</td>'
+                         r'\s*<td>([^<]*)</td>\s*</tr>', seg.group(1)):
+        hv, label, av = (x.strip() for x in m.groups())
+        key = STAT_KEYS.get(label)
+        if key is None:
+            continue
+        def _num(v):
+            if v.endswith("%"):
+                return v
+            try:
+                return int(v)
+            except ValueError:
+                return v
+        out[key] = (_num(hv), _num(av))
+    return out
+
+
+def match_stats_for(handle, r, delay=0.6):
+    """Stats da partida `r` na PERSPECTIVA de `handle` (bot_*/adv_*), ou {}."""
+    if not r.get("mid"):
+        return {}
+    try:
+        stats = parse_match_stats(fetch_match(r["mid"]))
+    except Exception as e:
+        print(f"  [{r['mid']}] stats indisponíveis: {e}", file=sys.stderr)
+        return {}
+    time.sleep(delay)
+    ours_is_home = (r["home_h"] == handle)
+    out = {}
+    for k, (hv, av) in stats.items():
+        out[f"bot_{k}"] = hv if ours_is_home else av
+        out[f"adv_{k}"] = av if ours_is_home else hv
+    return out
 
 
 def _team(block, side):

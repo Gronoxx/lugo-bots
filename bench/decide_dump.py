@@ -12,6 +12,7 @@ Reconstroi o inspector/bot minimo que _best_pass exige. HOME ataca +X.
 """
 import sys
 
+import lugo4py
 import replay as R
 import geometry as geo
 import tactics as tac  # noqa: F401  (garante que my_bot importa igual)
@@ -69,6 +70,9 @@ class MockInspector:
 
     def get_opponent_goalkeeper(self):
         return self._gk
+
+    def get_my_team_side(self):
+        return lugo4py.TeamSide.HOME       # convencao do harness: nos = HOME
 
 
 def decide(gs, bot):

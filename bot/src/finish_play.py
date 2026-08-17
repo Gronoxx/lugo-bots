@@ -91,17 +91,31 @@ def relay_point(jog2, holder_pos, jog1_target, opponents, gk):
 
 def holder_cross(holder, jog1, gk, opponents, goal_x):
     """Se o Jogador 1 esta aberto (linha de cruzamento livre) E teria um chute que
-    vence o goleiro da posicao dele -> (target, speed) do cruzamento; senao None."""
+    vence o goleiro da posicao dele -> (target, speed) do cruzamento; senao None.
+
+    Conserto (P1, 2026-08-16): a versao anterior mirava a posicao ATUAL do
+    jog1 — que esta CORRENDO para o ponto de corrida — entao o cruzamento
+    chegava atras do corredor. Agora mira lead_target(jog1, t_bola) e exige a
+    corrida no destino (padrao pass_endpoint_race): o cruzamento so sai se o
+    corredor chega ao ponto antes de qualquer adversario."""
     if jog1 is None:
         return None
     d = dist(holder.position, jog1.position)
     if d < P["pass_min_dist"] or d > geo.MAX_KICK_RANGE:
         return None
     speed = min(geo.BALL_MAX_SPEED, geo.speed_for_distance(d) * P["pass_speed_mult"])
-    if geo.can_be_intercepted(holder.position, jog1.position, list(opponents), speed, False):
+    t_ball = geo.turns_for_ball(speed, max(1.0, d - geo.TOUCH_RADIUS))
+    if t_ball == math.inf:
         return None
-    # o Jogador 1 venceria o goleiro da posicao dele?
-    sh = S.best_goal_shot(jog1.position, goal_x, gk, list(opponents), P["gk_reach_speed"])
+    opps = list(opponents)
+    tgt = geo.lead_target(jog1, t_ball)
+    t_recv = geo.turns_for_player(dist(jog1.position, tgt))
+    if any(geo.turns_for_player(dist(o.position, tgt)) <= t_recv for o in opps):
+        return None
+    if geo.can_be_intercepted(holder.position, tgt, opps, speed, False):
+        return None
+    # o Jogador 1 venceria o goleiro DO PONTO DE CHEGADA?
+    sh = S.best_goal_shot(tgt, goal_x, gk, opps, P["gk_reach_speed"])
     if sh is None or sh[1] <= P["finish_sure_slack"]:
         return None
-    return (point(jog1.position.x, jog1.position.y), speed)
+    return (tgt, speed)

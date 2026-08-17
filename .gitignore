@@ -27,3 +27,6 @@ videos/
 Lugo.zip
 .venv-rl
 rl/checkpoints/
+
+# snapshot de código p/ portões de inércia — recriável
+bench/baselines/

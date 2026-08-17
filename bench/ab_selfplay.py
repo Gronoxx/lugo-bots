@@ -40,8 +40,8 @@ def gd(path, side):
     return (h - a) if side == "HOME" else (a - h)
 
 
-def run_match(base_json, test_json, rep, test_side):
-    mid = f"absp_{test_side}_{rep}"
+def run_match(base_json, test_json, rep, test_side, tag=""):
+    mid = f"absp{tag}_{test_side}_{rep}"
     env = dict(os.environ, TIMER_MODE="rush")
     env.pop("HOME_PARAMS", None)
     env.pop("AWAY_PARAMS", None)
@@ -67,14 +67,18 @@ def main():
     ap.add_argument("--reps", type=int, default=12)
     ap.add_argument("--parallel", type=int, default=4)
     ap.add_argument("--test", required=True, help="genes extra do lado TEST (JSON)")
+    ap.add_argument("--base", default=None,
+                    help="genoma do lado BASE (JSON; default = Fase A)")
+    ap.add_argument("--tag", default="", help="sufixo dos match-ids (sem colisão)")
     args = ap.parse_args()
 
-    base = dict(FA)
-    test = dict(FA); test.update(json.loads(args.test))
-    base_json, test_json = json.dumps(base), json.dumps(test)
-    print(f"SELF-PLAY test vs base (Fase A). test extra = {args.test}")
+    base = json.loads(args.base) if args.base else dict(FA)
+    test = dict(base); test.update(json.loads(args.test))
+    base_json = json.dumps(base, separators=(",", ":"))
+    test_json = json.dumps(test, separators=(",", ":"))
+    print(f"SELF-PLAY test vs base. base = {base_json}\n  test extra = {args.test}")
 
-    jobs = [(base_json, test_json, rep, side)
+    jobs = [(base_json, test_json, rep, side, args.tag)
             for rep in range(1, args.reps + 1) for side in ("home", "away")]
     diffs = []
     done = 0

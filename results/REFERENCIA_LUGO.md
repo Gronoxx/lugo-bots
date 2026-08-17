@@ -356,6 +356,8 @@ Medições: `analysis/replay.py` sobre 221 replays; amostras indicadas por regra
 
 **Interpretação:** o goleiro **não sai da linha** (x travado), move-se só em y a ≤100/turno; ao pular faz exatamente 200/turno por até 3 turnos (≈600 d de alcance vertical em rajada, [INFERIDO] de DURATION=3). Reach efetivo ≈ 920/2 + 100 ≈ **560 d** [INFERIDO da spec, corroborado pela medição]. **[DESCONHECIDO]** o gatilho de decisão do pulo — é do bot, não do servidor; nos replays vê-se só o efeito (rajadas de speed=200).
 
+**[MEDIDO 2026-08-15 — sonda ativa, upgrade de "observado" para "falsificado"]:** com o gene de laboratório `gk_probe` ORDENANDO o goleiro a ir a x=1200 por 200 turnos (partida real, rush), o x dele ficou **exatamente 0 em todos os 522 snapshots**. O servidor TRAVA o goleiro na linha; não é escolha dos bots. Consequências: (a) o GK só alcança bolas a ≤~560 da linha (alinhando y); (b) bola solta PARADA na zona-1400 com x>560 é **inalcançável por todos** até o auto-chute dos 40 turnos — que mira o CENTRO do campo (~(10000,5000)) a ~390 [MEDIDO, 1 caso ajustado com erro <1%]; a defesa correta é emboscar a trajetória da ejeção LOGO FORA do anel (implementado no gene `gk_collect`, my_bot `_autokick_ambush`).
+
 ### 6.3 Gol
 
 | Campo | Valor | Fonte |
