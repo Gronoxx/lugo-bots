@@ -231,6 +231,14 @@ DEFAULTS = {
     # largura do corredor central da formacao de DEFENDERS+MIDS.
     "ks_turns": 200.0,
     "ks_halfwidth": 2200.0,
+    # v7/METAMORFO (quina_entry): profundidade da quina (distancia da linha
+    # de fundo DELES; piso 1500 nos BOUNDS = fora da faixa x<=1400 por
+    # construcao), afastamento do y alem da boca, fracao minima de avanco do
+    # portador e alarme do relogio da zona (recuo ao fluxo).
+    "qe_depth": 1800.0,
+    "qe_y_off": 1200.0,
+    "qe_minfrac": 0.62,
+    "qe_zone_alarm": 25.0,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -482,6 +490,11 @@ STRUCTURE_DEFAULTS = {
     # desorganizado). So y; x intocado; so o fallback de formacao. RISCO
     # lei-da-passividade: criterio de morte = gols PRO nao podem cair. off=v6.
     "kickoff_shield": "off",               # | on
+    # v7/METAMORFO (quina_entry): sem chute nem passe, o portador ataca a
+    # quina/linha de fundo (lado oposto ao GK) em vez do centro — anatomia
+    # dos 62% do BotAdversario10 e do nosso g1 da v6. Sinergia: swarm_rebound no
+    # arco + far_post_run no poste 2. off = v6 (carry normal).
+    "quina_entry": "off",                  # | on
     # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
     # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
     # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
@@ -624,6 +637,10 @@ BOUNDS = {
     "cpw_lane_frac": (0.25, 0.8),
     "ks_turns": (40.0, 400.0),
     "ks_halfwidth": (1200.0, 4000.0),
+    "qe_depth": (1500.0, 2200.0),
+    "qe_y_off": (300.0, 2200.0),
+    "qe_minfrac": (0.5, 0.85),
+    "qe_zone_alarm": (10.0, 39.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
@@ -697,6 +714,7 @@ STRUCTURE_OPTIONS = {
     "outlet_press_detect": ["off", "on"],
     "counter_press_window": ["off", "on"],
     "kickoff_shield": ["off", "on"],
+    "quina_entry": ["off", "on"],
 }
 
 

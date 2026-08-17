@@ -416,6 +416,14 @@ class MyBot(lugo4py.Bot, ABC):
             if pass_order is not None:
                 return [pass_order]
 
+            # v7/METAMORFO (quina_entry): sem chute nem passe, atacar a quina/
+            # linha de fundo (desloca o GK ao poste; o chute é reavaliado no
+            # topo da cascata a cada turno). off = v6.
+            if P.get("quina_entry") == "on":
+                qt = self._quina_target(inspector, goal_center)
+                if qt is not None and dist(me.position, qt) > 400.0:
+                    return [safe_move(inspector, me, qt)]
+
             # 3) sem chute nem passe: em vez de conduzir para o meio (onde o
             #    goleiro já está), buscar o ângulo lateral que cria a chance.
             #    Medido nos replays: chutes com folga do goleiro >1800 convertem
@@ -1362,6 +1370,43 @@ class MyBot(lugo4py.Bot, ABC):
             return None
         target, speed = best
         return geo.kick_to(inspector, me, inspector.get_ball(), target, speed)
+
+    def _quina_target(self, inspector, goal_center):
+        """v7/METAMORFO (quina_entry): sem chute nem passe aprovados, conduzir
+        à QUINA — qe_depth da linha de fundo deles, y fora da boca, lado
+        oposto ao GK (BotAdversario10: 62% de conversão deslocando o GK ao poste;
+        nosso g1 da v6 teve a mesma anatomia). Segurança por construção:
+        BOUNDS de qe_depth têm piso 1500 => o alvo fica FORA da faixa x<=1400
+        (o relógio de 40t da zona nem arma) e fora do disco 1400
+        (hypot(1500, >=1300) >= 1984). qe_zone_alarm cobre o residual (bola
+        já funda por outra via => recua ao fluxo). None = carry normal."""
+        if P.get("quina_entry") != "on":
+            return None
+        me = inspector.get_me()
+        side = inspector.get_my_team_side()
+        if tac.ball_advance_frac(me.position, side) < P["qe_minfrac"]:
+            return None
+        try:
+            if getattr(inspector.get_snapshot(),
+                       "turns_ball_in_goal_zone", 0) >= P["qe_zone_alarm"]:
+                return None
+        except Exception:
+            pass
+        sign_x = -1.0 if goal_center.x > MAX_X / 2.0 else 1.0
+        tx = goal_center.x + sign_x * P["qe_depth"]
+        gk = inspector.get_opponent_goalkeeper()
+        gk_y = gk.position.y if gk is not None else MAX_Y / 2.0
+        opponents = list(inspector.get_opponent_players())
+        best, best_score = None, -1e18
+        for ty in (GOAL_MIN_Y - P["qe_y_off"], GOAL_MAX_Y + P["qe_y_off"]):
+            ty = max(500.0, min(MAX_Y - 500.0, ty))
+            cand = point(tx, ty)
+            press = self._pressure_on(cand, opponents)
+            score = (0.001 * abs(gk_y - ty) - 600.0 * press
+                     - 0.15 * dist(me.position, cand))
+            if score > best_score:
+                best_score, best = score, cand
+        return best
 
     def _angle_target(self, inspector, goal_center):
         """Para onde levar a bola quando estamos em zona mas sem ângulo.
