@@ -177,6 +177,37 @@ class MyBot(lugo4py.Bot, ABC):
                 pass
         return n
 
+    def _staggered_chasers(self, inspector, n):
+        """Eleição de chasers com escalonamento anti-CB (cb_stagger, v6).
+
+        off: delega exatamente à eleição atual (inércia por code-path).
+        on: com a bola no nosso terço, se TODOS os eleitos são DEFENDERS
+        (anatomia do gol de ouro do BotAdversario1: ambos os zagueiros pressionam o
+        portador e o corredor central fica vazio para o camper), troca o
+        ÚLTIMO eleito pelo melhor não-zagueiro do ranking de chegada — mesmo
+        nº de pressionadores (agressividade preservada), zaga nunca esvazia.
+        Determinístico: todos os processos calculam igual do mesmo snapshot."""
+        elected = (tac.adaptive_chasers(inspector, n, P["chase_margin"])
+                   if P.get("chase_mode") == "adaptive"
+                   else tac.chasers(inspector, n))
+        if P.get("cb_stagger") != "on" or len(elected) < 2:
+            return elected
+        if any(num not in tac.DEFENDERS for num in elected):
+            return elected
+        ball = inspector.get_ball()
+        side = inspector.get_my_team_side()
+        adv = (ball.position.x if side == lugo4py.TeamSide.HOME
+               else MAX_X - ball.position.x) / MAX_X
+        if adv >= 1.0 / 3.0:
+            return elected
+        outfield = [p for p in inspector.get_my_team_players()
+                    if p.number != tac.GOALKEEPER
+                    and p.number not in tac.DEFENDERS]
+        if not outfield:
+            return elected
+        ranked = tac.rank_by_ball_arrival(outfield, ball)
+        return elected[:-1] + [ranked[0].number]
+
     def _second_ball_target(self, inspector, me, side, chasers):
         """P3 (second_ball): ponto de ocupação da ZONA DE LIMPEZA do goleiro
         deles após o nosso chute sem gol (a reposse acontece a ~2300-3000 do
@@ -502,9 +533,7 @@ class MyBot(lugo4py.Bot, ABC):
             ball = inspector.get_ball()
             side = inspector.get_my_team_side()
             n_ch = self._n_chasers(inspector)   # P4: reforço da contrapressão
-            chasers = (tac.adaptive_chasers(inspector, n_ch, P["chase_margin"])
-                       if P.get("chase_mode") == "adaptive"
-                       else tac.chasers(inspector, n_ch))
+            chasers = self._staggered_chasers(inspector, n_ch)
 
             if self.number in chasers:
                 # pressiona o portador pelo lado do nosso gol (corta o avanço)
@@ -584,9 +613,7 @@ class MyBot(lugo4py.Bot, ABC):
             ball = inspector.get_ball()
             side = inspector.get_my_team_side()
             n_ch = self._n_chasers(inspector)   # P4: reforço da contrapressão
-            chasers = (tac.adaptive_chasers(inspector, n_ch, P["chase_margin"])
-                       if P.get("chase_mode") == "adaptive"
-                       else tac.chasers(inspector, n_ch))
+            chasers = self._staggered_chasers(inspector, n_ch)
 
             if self.number in chasers:
                 r = geo.intercept_turn(me.position, ball)
@@ -811,6 +838,16 @@ class MyBot(lugo4py.Bot, ABC):
                 if fin.arrival_speed(v0_eff, d) < P["shot_arrival_min"]:
                     continue
 
+            # GATE HÍBRIDO (v6): o critério é decidido POR ALVO pela distância.
+            # Perto (d<=hybrid_close_range => t_bola<=~9, GK cobre +-1235):
+            # threshold — mantém o volume onde os gols reais nascem (rebote,
+            # segunda bola, caos). Longe (t_bola 16-20, GK cobre +-2360):
+            # slack temporal — mata as ~40 doações de longe do jogo de 44
+            # chutes vs level-3. Estático, sem estado: imune ao bug da v5.
+            gm = gate_mode
+            if gm == "hybrid":
+                gm = "threshold" if d <= P["hybrid_close_range"] else "slack"
+
             # Portão EMPÍRICO, não teórico.
             #
             # O modelo anterior assumia que o goleiro sempre pula a 200 d/turno
@@ -827,7 +864,7 @@ class MyBot(lugo4py.Bot, ABC):
             #   > 1800  -> 45%
             # Chutar com folga pequena é desperdício; exigir folga demais faz o
             # bot nunca chutar. O limiar é um gene, para a evolução ajustá-lo.
-            if gate_mode == "slack" and gk is not None:
+            if gm == "slack" and gk is not None:
                 # gate TEMPORAL calibrado: folga do alvo ao goleiro MENOS o quanto
                 # ele cobre em t turnos (560 + gk_reach_speed·t). gk_reach_speed=75
                 # calibrado (AUC 0.87 vs gol; slack>0 converte 43%, <=0 converte 0%).
@@ -838,7 +875,7 @@ class MyBot(lugo4py.Bot, ABC):
                 if slack <= P["shot_min_slack"] - gap_relief:
                     continue
                 score = slack
-            elif gate_mode == "xg" and fin.available():
+            elif gm == "xg" and fin.available():
                 # modelo xG: mesmas features do treino (reta bola->alvo).
                 # dist_line = d (alvo na linha do gol); ycross = target.y.
                 ux, uy = target.x - me.position.x, target.y - me.position.y

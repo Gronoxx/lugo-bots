@@ -38,6 +38,10 @@ DEFAULTS = {
     # gate TEMPORAL (shot_gate="slack"): slack = |alvo.y-gk.y| - (560+gk_reach_speed*t)
     "shot_min_slack": 0.0,     # autoriza o chute se slack > isto (calibrado: >0)
     "gk_reach_speed": 75.0,    # calibrado (AUC 0.87 vs gol). NÃO usar 200 (erro v6/v8)
+    # gate HÍBRIDO (shot_gate="hybrid"): d<=isto usa threshold (volume perto —
+    # t_bola<=9 => GK cobre +-1235, batível), d>isto usa slack (longe contra GK
+    # posicionado é morto: t_bola 16-20 => cobre +-2360; v4 doou ~40 chutes vs L3).
+    "hybrid_close_range": 3200.0,
     # PISO de potência de CHEGADA usando a velocidade REAL de saída do chute
     # (achievable_shot_speed). 0 = inerte (=v9); 200 <=> alcance efetivo 6000
     # (= dangerous_shot_range). Problema 2 (chute fraco / em cima do goleiro).
@@ -260,7 +264,7 @@ STRUCTURE_DEFAULTS = {
     "keeper_mode": "line",                 # | sweeper
     # portão de finalização: limiar fixo na folga do goleiro (v9) ou modelo xG
     # de 4 features (bot/src/finishing.py, treinado vs level-1 amd64).
-    "shot_gate": "threshold",              # | xg | slack
+    "shot_gate": "threshold",              # | xg | slack | hybrid
     # nº de chasers: fixo (v9) ou adaptativo (1 quando ganhamos com folga) — item 5
     "chase_mode": "fixed",                 # | adaptive
     # corrida ao poste oposto (movimentação sem bola): quando o portador está
@@ -388,6 +392,13 @@ STRUCTURE_DEFAULTS = {
     # Com on: comeca em threshold e APERTA para slack EM-JOGO ao detectar
     # goleiro-elite (>= ag_min_shots nossos on-goal e <= ag_max_goals gols).
     "shot_gate_adaptive": "off",           # | on
+    # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
+    # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
+    # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
+    # camper (#9) no centro da area. Com on: se TODOS os eleitos sao DEFENDERS,
+    # troca o ULTIMO pelo melhor nao-zagueiro do ranking (mantem o MESMO numero
+    # de pressionadores — agressividade preservada, zaga nunca esvazia).
+    "cb_stagger": "off",                   # | on
 }
 
 # faixas admissíveis para mutação (min, max) — evita indivíduos absurdos
@@ -501,6 +512,7 @@ BOUNDS = {
     "ag_min_shots": (3.0, 20.0),
     "ag_max_goals": (0.0, 3.0),
     "ot_gate_relief": (0.0, 600.0),
+    "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
     "support_channel_width": (0.0, 3500.0),
@@ -519,7 +531,7 @@ STRUCTURE_OPTIONS = {
     "marking_mode": ["cover", "man"],
     "keeper_mode": ["line", "sweeper"],
     "angle_seek": ["off", "on"],
-    "shot_gate": ["threshold", "xg", "slack"],
+    "shot_gate": ["threshold", "xg", "slack", "hybrid"],
     "chase_mode": ["fixed", "adaptive"],
     "far_post_run": ["off", "on"],
     "use_velocity": ["off", "on"],
@@ -565,6 +577,7 @@ STRUCTURE_OPTIONS = {
     "gs_draw_ok": ["off", "on"],
     "camper_shadow": ["off", "on"],
     "shot_gate_adaptive": ["off", "on"],
+    "cb_stagger": ["off", "on"],
 }
 
 
