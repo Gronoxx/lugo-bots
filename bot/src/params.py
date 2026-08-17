@@ -161,6 +161,15 @@ DEFAULTS = {
     # (0 = largura neutra; negativo = abre para o lado OPOSTO a bola).
     "attack_width_shift": 0.0,
     "attack_width_minfrac": 0.5,
+    # v7/METAMORFO (swarm_rebound): generaliza o second_ball — sw_count
+    # atacantes em SLOTS num arco a sw_radius do gol deles (angulos 0/±sw_angle
+    # da frontal), pré E pós chute. Fonte: cerco do BotAdversario2 (12×2: 39 defesas
+    # do GK caindo onde ele tem 2-3 corpos → 51 finalizações). O arco nunca
+    # entra no disco 1400+sw_margin (servidor empurra jogador de linha).
+    "sw_count": 2.0,
+    "sw_radius": 2100.0,
+    "sw_angle": 35.0,
+    "sw_margin": 150.0,
     # P4: piso radial da ancora defensiva (p10 medido = 1400 = abracado ao anel
     # intocavel; ~0,6-0,8 corpo desperdicado). 0 = inerte (=v3).
     "def_min_depth": 0.0,
@@ -369,6 +378,13 @@ STRUCTURE_DEFAULTS = {
     "kickoff_play": "off",                 # | on
     # P3: ocupar a zona de limpeza do GK deles apos nosso chute sem gol.
     "second_ball": "off",                  # | on
+    # v7/METAMORFO (swarm_rebound): 2-3 atacantes no ARCO de rebote do GK
+    # deles, ANTES do chute (gancho em on_supporting quando o portador entra
+    # em alcance) e DEPOIS (generaliza a zona única do second_ball em slots).
+    # Mecanismo do cerco do BotAdversario2 (cada defesa vira novo chute). Eleição
+    # DISJUNTA de finish_mode (Jog1/Jog2) e far_post_run. Torna rebound_crash
+    # amplamente redundante — não ligar os dois no mesmo genoma.
+    "swarm_rebound": "off",                # | on
     # P3: largura dos atacantes com posse no campo deles (deslocar o GK).
     "attack_width": "off",                 # | on
     # P4: contrapressao em janela apos perder a posse (agressiva — adiciona
@@ -508,6 +524,10 @@ BOUNDS = {
     "sb_y_spread": (0.0, 2000.0),
     "attack_width_shift": (-0.35, 0.35),
     "attack_width_minfrac": (0.3, 0.8),
+    "sw_count": (0.0, 3.0),
+    "sw_radius": (1500.0, 2600.0),
+    "sw_angle": (15.0, 55.0),
+    "sw_margin": (50.0, 400.0),
     "def_min_depth": (0.0, 3000.0),
     "cp_window": (5.0, 60.0),
     "cp_extra": (0.0, 3.0),
@@ -574,6 +594,7 @@ STRUCTURE_OPTIONS = {
     "init_variant": ["v3", "kick9", "fine", "sym", "race"],
     "kickoff_play": ["off", "on"],
     "second_ball": ["off", "on"],
+    "swarm_rebound": ["off", "on"],
     "attack_width": ["off", "on"],
     "counterpress": ["off", "on"],
     "gs_sb_boost": ["off", "on"],

@@ -213,8 +213,11 @@ class MyBot(lugo4py.Bot, ABC):
         """P3 (second_ball): ponto de ocupação da ZONA DE LIMPEZA do goleiro
         deles após o nosso chute sem gol (a reposse acontece a ~2300-3000 do
         gol em ~25 turnos; hoje ELES ganham 61-83% dela). Só ATACANTES
-        não-chasers (lição da passividade). None = fluxo normal."""
-        if P.get("second_ball") != "on":
+        não-chasers (lição da passividade). None = fluxo normal.
+        v7 (swarm_rebound): com o gene ligado, a zona única vira o ARCO de
+        slots do _swarm_slot (mesma janela pós-chute; cerco do BotAdversario2)."""
+        swarm = P.get("swarm_rebound") == "on"
+        if not swarm and P.get("second_ball") != "on":
             return None
         st = getattr(self, "_shot_turn", None)
         if st is None:
@@ -224,6 +227,8 @@ class MyBot(lugo4py.Bot, ABC):
             return None
         if self.number not in tac.FORWARDS:
             return None
+        if swarm:
+            return self._swarm_slot(inspector, me, chasers, exclude=())
         gc = self.mapper.get_attack_goal().get_center()
         zx = gc.x - P["sb_dist"] if gc.x > MAX_X / 2 else gc.x + P["sb_dist"]
         zone = point(zx, MAX_Y / 2.0)
@@ -241,6 +246,44 @@ class MyBot(lugo4py.Bot, ABC):
         slot = chosen.index(self.number)
         off = (slot - (len(chosen) - 1) / 2.0) * P["sb_y_spread"]
         return point(zx, max(600.0, min(MAX_Y - 600.0, MAX_Y / 2.0 + off)))
+
+    def _swarm_slot(self, inspector, me, chasers, exclude=()):
+        """v7/METAMORFO (swarm_rebound): slot no ARCO de rebote do GK deles.
+        sw_count ATACANTES não-chasers (fora de `exclude`) ocupam ângulos
+        espalhados (0/±sw_angle da frontal) a sw_radius do centro do gol —
+        onde as defesas do GK caem (BotAdversario2: 39 defesas → 51 finalizações).
+        O raio nunca entra no disco 1400+sw_margin (o servidor empurra
+        jogador de linha; medido min=1401). Eleição determinística por
+        distância à âncora frontal, slot por ordem de y (sem cruzamento).
+        None = não sou eleito / sem candidatos."""
+        gc = self.mapper.get_attack_goal().get_center()
+        cand = [p for p in inspector.get_my_team_players()
+                if p.number in tac.FORWARDS and p.number not in chasers
+                and p.number not in exclude]
+        if not cand:
+            return None
+        r = max(P["sw_radius"], 1400.0 + P["sw_margin"])
+        field_sign = -1.0 if gc.x > MAX_X / 2.0 else 1.0   # gol -> campo
+        anchor = point(gc.x + field_sign * r, gc.y)
+        cand.sort(key=lambda p: (dist(p.position, anchor), p.number))
+        chosen = cand[:int(round(P["sw_count"]))]
+        nums = [p.number for p in chosen]
+        if me.number not in nums:
+            return None
+        by_y = sorted(chosen, key=lambda p: (p.position.y, p.number))
+        slot = next(i for i, p in enumerate(by_y) if p.number == me.number)
+        R = len(by_y)
+        off_deg = 0.0 if R == 1 else (-1.0 + 2.0 * slot / (R - 1)) * P["sw_angle"]
+        base_ang = 0.0 if field_sign > 0 else math.pi
+        ang = base_ang + math.radians(off_deg)
+        cx = gc.x + math.cos(ang) * r
+        cy = max(400.0, min(MAX_Y - 400.0, gc.y + math.sin(ang) * r))
+        gd = math.hypot(cx - gc.x, cy - gc.y)      # clamp radial pós-ajuste
+        rmin = 1400.0 + P["sw_margin"]
+        if gd < rmin:
+            cx = gc.x + (cx - gc.x) / (gd or 1.0) * rmin
+            cy = gc.y + (cy - gc.y) / (gd or 1.0) * rmin
+        return point(cx, cy)
 
     # ---------------------------------------------------------------- posse
     def on_holding(self, inspector) -> List[lugo4py.Order]:
@@ -477,6 +520,30 @@ class MyBot(lugo4py.Bot, ABC):
                                                          opps, gk)
                             return self._sup_orders(
                                 inspector, safe_move(inspector, me, rp))
+
+            # v7/METAMORFO (swarm_rebound, fase PRÉ-chute): portador em alcance
+            # de finalização → atacantes ocupam o arco de rebote ANTES do chute
+            # (o cerco chega junto; a defesa do GK cai onde temos corpos).
+            # Eleição DISJUNTA: nunca rouba Jog1/Jog2 do finish_mode nem o
+            # far-post runner. off = v6.
+            if (P.get("swarm_rebound") == "on" and holder is not None
+                    and holder.number != 0):
+                gc_sw = self.mapper.get_attack_goal().get_center()
+                if dist(holder.position, gc_sw) <= P["dangerous_shot_range"]:
+                    excl = {holder.number}
+                    if P.get("finish_mode") == "on":
+                        mates_sw = [p for p in inspector.get_my_team_players()
+                                    if p.number != holder.number]
+                        j1, j2 = finish_play.roles(holder, mates_sw)
+                        excl |= {j.number for j in (j1, j2) if j is not None}
+                    if P.get("far_post_run") == "on":
+                        fp_num = self._far_post_runner(inspector, holder, side)
+                        if fp_num is not None:
+                            excl.add(fp_num)
+                    st_sw = self._swarm_slot(inspector, me, (), exclude=excl)
+                    if st_sw is not None:
+                        return self._sup_orders(
+                            inspector, safe_move(inspector, me, st_sw))
 
             # posição de formação, deslocada para frente (estamos atacando)
             # P3 (attack_width): com posse no campo deles, os atacantes usam a
