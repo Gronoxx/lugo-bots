@@ -220,6 +220,13 @@ DEFAULTS = {
     "opd_short_dist": 2200.0,
     "opd_center_halfwidth": 1800.0,
     "opd_w_flank": 0.0,
+    # v7/METAMORFO (counter_press_window): janela (turnos; 50=2,5s) da
+    # marcacao de linhas pos-perda, fracao minima de avanco da PERDA (0.5 =
+    # so campo adversario) e fracao da linha portador->receptor onde o
+    # marcador se planta.
+    "cpw_window": 50.0,
+    "cpw_min_frac": 0.5,
+    "cpw_lane_frac": 0.5,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -459,6 +466,12 @@ STRUCTURE_DEFAULTS = {
     # no terco defensivo o passe curto central e' vetado (a bola do 5×0 do
     # BotAdversario2: 5 erros no jogo inteiro; nosso modo-de-perder nº3). off = v9.
     "outlet_press_detect": "off",          # | on
+    # v7/METAMORFO (counter_press_window): REVISITA do counterpress rejeitado,
+    # com mecanismo DIFERENTE — nao adiciona chasers: 1-2 MIDS/FWDS altos
+    # marcam a LINHA do 1º passe por ~2,5s, so perda no campo ADVERSARIO,
+    # DEFENDERS nunca (re-roubo do BotAdversario2: BotAdversario1 21 roubadas/0 finalizacoes).
+    # CRITERIO DE MORTE pre-declarado: gols PRO nao podem cair no A/B. off=v6.
+    "counter_press_window": "off",         # | on
     # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
     # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
     # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
@@ -596,6 +609,9 @@ BOUNDS = {
     "opd_short_dist": (800.0, 4000.0),
     "opd_center_halfwidth": (600.0, 3500.0),
     "opd_w_flank": (0.0, 1.0),
+    "cpw_window": (20.0, 80.0),
+    "cpw_min_frac": (0.4, 0.8),
+    "cpw_lane_frac": (0.25, 0.8),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
@@ -667,6 +683,7 @@ STRUCTURE_OPTIONS = {
     "cb_stagger": ["off", "on"],
     "ot_press": ["off", "on"],
     "outlet_press_detect": ["off", "on"],
+    "counter_press_window": ["off", "on"],
 }
 
 

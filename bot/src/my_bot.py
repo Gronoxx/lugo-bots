@@ -94,6 +94,20 @@ class MyBot(lugo4py.Bot, ABC):
                             ball.position,
                             inspector.get_my_team_side()) >= P["cp_min_frac"]):
                     self._cp_until = turn + int(round(P["cp_window"]))
+                # v7/METAMORFO (counter_press_window): perda no campo
+                # ADVERSÁRIO (frac >= cpw_min_frac) arma a janela de marcação
+                # das LINHAS do 1º passe (revisita do counterpress com OUTRO
+                # mecanismo: mesmos chasers; corpos altos marcam receptores —
+                # o BotAdversario1 roubou 52 bolas do BotAdversario12 e criou 0: roubada sem
+                # transição é estéril). Arming guardado pelo gene (sem estado
+                # morto).
+                if (P.get("counter_press_window") == "on" and lo is not None
+                        and turn - lo <= 3
+                        and turn > getattr(self, "_cpw_until", -1)
+                        and tac.ball_advance_frac(
+                            ball.position,
+                            inspector.get_my_team_side()) >= P["cpw_min_frac"]):
+                    self._cpw_until = turn + int(round(P["cpw_window"]))
             # P3 (second_ball): NOSSO chute detectado = bola ficou livre e
             # rápida rumo ao gol de ataque logo após posse nossa. Se um
             # companheiro dominar (viramos HOLDING), a janela morre sozinha.
@@ -263,6 +277,47 @@ class MyBot(lugo4py.Bot, ABC):
         slot = chosen.index(self.number)
         off = (slot - (len(chosen) - 1) / 2.0) * P["sb_y_spread"]
         return point(zx, max(600.0, min(MAX_Y - 600.0, MAX_Y / 2.0 + off)))
+
+    def _counterpress_target(self, inspector, me, side, chasers):
+        """v7/METAMORFO (counter_press_window): na janela pós-perda ALTA,
+        1-2 MIDS/FWDS não-chasers marcam a LINHA do 1º passe do novo portador
+        (receptores prováveis = colegas dele de linha mais perto do NOSSO gol,
+        os 2 mais próximos dele). DEFENDERS/GK nunca (lei da passividade: o
+        custo é só de corpos que JÁ estavam altos — nenhum chaser a menos).
+        None = fluxo normal."""
+        if P.get("counter_press_window") != "on":
+            return None
+        try:
+            if inspector.get_snapshot().turn > getattr(self, "_cpw_until", -1):
+                return None
+        except Exception:
+            return None
+        if me.number in tac.DEFENDERS or me.number == tac.GOALKEEPER:
+            return None
+        h = inspector.get_ball_holder()
+        if h is None or h.number == 0 or h.team_side == side:
+            return None
+        ourg = self.mapper.get_defense_goal().get_center()
+        d_h = dist(h.position, ourg)
+        recvs = [o for o in inspector.get_opponent_players()
+                 if o.number != h.number and o.number != tac.GOALKEEPER
+                 and dist(o.position, ourg) < d_h]
+        recvs.sort(key=lambda o: (dist(o.position, h.position), o.number))
+        recvs = recvs[:2]
+        if not recvs:
+            return None
+        ours = [p for p in inspector.get_my_team_players()
+                if (p.number in tac.MIDFIELDERS or p.number in tac.FORWARDS)
+                and p.number not in chasers]
+        ours.sort(key=lambda p: (dist(p.position, h.position), p.number))
+        markers = ours[:len(recvs)]
+        nums = [p.number for p in markers]
+        if me.number not in nums:
+            return None
+        r = recvs[nums.index(me.number)]
+        f = P["cpw_lane_frac"]
+        return point(h.position.x + (r.position.x - h.position.x) * f,
+                     h.position.y + (r.position.y - h.position.y) * f)
 
     def _swarm_slot(self, inspector, me, chasers, exclude=()):
         """v7/METAMORFO (swarm_rebound): slot no ARCO de rebote do GK deles.
@@ -646,6 +701,13 @@ class MyBot(lugo4py.Bot, ABC):
             sb = self._second_ball_target(inspector, me, side, chasers)
             if sb is not None:
                 return [safe_move(inspector, me, sb),
+                        inspector.make_order_catch()]
+
+            # v7/METAMORFO (counter_press_window): janela pós-perda alta —
+            # marcar as linhas do 1º passe do novo portador. off = v6.
+            cpt = self._counterpress_target(inspector, me, side, chasers)
+            if cpt is not None:
+                return [safe_move(inspector, me, cpt),
                         inspector.make_order_catch()]
 
             # Sombra do camper (camper_shadow): 1 zagueiro cola no camper mais
