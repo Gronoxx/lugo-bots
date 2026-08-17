@@ -166,17 +166,34 @@ class MyBot(lugo4py.Bot, ABC):
             cy = ourg.y + (cy - ourg.y) / (gd or 1.0) * 1400.0
         return point(cx, cy)
 
+    def _ot_active(self, inspector) -> bool:
+        """v7/METAMORFO (ot_press): prorrogação (turn>6000; localmente NUNCA
+        dispara — partidas terminam em 6000). O BotAdversario1 do 1×1 circulou passivo
+        a OT inteira; na OT o jogo é de UMA chance — pressão máxima + chutar
+        primeiro (par do ot_gate_relief). off = False na 1ª linha."""
+        if P.get("ot_press") != "on":
+            return False
+        try:
+            return inspector.get_snapshot().turn > 6000
+        except Exception:
+            return False
+
     def _n_chasers(self, inspector):
         """P4 (counterpress): nº de chasers, com o reforço temporário da janela
-        de contrapressão. off (ou fora da janela) = N_CHASERS (=v3)."""
+        de contrapressão. off (ou fora da janela) = N_CHASERS (=v3).
+        v7 (ot_press): na prorrogação o reforço fica SEMPRE ativo (max, sem
+        dupla contagem com a janela do counterpress)."""
         n = N_CHASERS
+        boost = 0
         if P.get("counterpress") == "on":
             try:
                 if inspector.get_snapshot().turn <= getattr(self, "_cp_until", -1):
-                    n += int(round(P["cp_extra"]))
+                    boost = int(round(P["cp_extra"]))
             except Exception:
                 pass
-        return n
+        if self._ot_active(inspector):
+            boost = max(boost, int(round(P["cp_extra"])))
+        return n + boost
 
     def _staggered_chasers(self, inspector, n):
         """Eleição de chasers com escalonamento anti-CB (cb_stagger, v6).
@@ -548,9 +565,13 @@ class MyBot(lugo4py.Bot, ABC):
             # posição de formação, deslocada para frente (estamos atacando)
             # P3 (attack_width): com posse no campo deles, os atacantes usam a
             # largura do gene em vez da compressão fixa. off = byte-idêntico.
+            # v7 (ot_press): na prorrogação a linha de apoio sobe ot_aggr_boost.
+            aggr_sup = P["aggression_support"]
+            if self._ot_active(inspector):
+                aggr_sup = min(1.5, aggr_sup + P["ot_aggr_boost"])
             base = tac.formation_position(
                 self.number, ball.position, side,
-                aggression=P["aggression_support"],
+                aggression=aggr_sup,
                 attacking=(tac.ball_advance_frac(ball.position, side)
                            >= P["attack_width_minfrac"]))
 

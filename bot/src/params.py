@@ -208,6 +208,9 @@ DEFAULTS = {
     "cp_window": 25.0,
     "cp_extra": 1.0,
     "cp_min_frac": 0.33,
+    # v7/METAMORFO (ot_press): elevacao da linha de apoio na prorrogacao
+    # (aggression_support + isto, teto 1.5). Reusa cp_extra p/ o chaser extra.
+    "ot_aggr_boost": 0.4,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -437,6 +440,12 @@ STRUCTURE_DEFAULTS = {
     # Com on: comeca em threshold e APERTA para slack EM-JOGO ao detectar
     # goleiro-elite (>= ag_min_shots nossos on-goal e <= ag_max_goals gols).
     "shot_gate_adaptive": "off",           # | on
+    # v7/METAMORFO (ot_press): na prorrogacao (turn>6000), pressao maxima —
+    # chaser extra (cp_extra) sempre ativo + linha de apoio elevada
+    # (ot_aggr_boost). O BotAdversario1 do 1×1 (17/08) circulou PASSIVO a OT inteira;
+    # gol de ouro = jogo de uma chance, quem cria primeiro ganha. Par do
+    # ot_gate_relief. Localmente invisivel (sem OT). off = v6.
+    "ot_press": "off",                     # | on
     # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
     # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
     # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
@@ -568,6 +577,7 @@ BOUNDS = {
     "ag_min_shots": (3.0, 20.0),
     "ag_max_goals": (0.0, 3.0),
     "ot_gate_relief": (0.0, 600.0),
+    "ot_aggr_boost": (0.0, 1.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
@@ -637,6 +647,7 @@ STRUCTURE_OPTIONS = {
     "camper_shadow": ["off", "on"],
     "shot_gate_adaptive": ["off", "on"],
     "cb_stagger": ["off", "on"],
+    "ot_press": ["off", "on"],
 }
 
 
