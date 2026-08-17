@@ -98,15 +98,22 @@ docker push repo.lugobots.ai/killua-zoldyck:v4   # e marcar como main release
 | **v4k** | v4 + shot_gate=slack + gs_retain_late + gs_draw_ok (`bot/genome_v4k_knockout.json`) | **Mata-mata** vs muralha/GK-forte (inanição + empate-serve) | selfplay vs v4 −0,12 (sem desastre); vs sparring: chance 0,44→**0,83**, slack>0 77%, gf 0→0,62 |
 | v3 | (tag :v3 na plataforma) | rollback | — |
 | kickoff pack (kick9+playbook) + sym | genes prontos | carta vs iguais (converte reinícios ganhos: terço 0→38%) | não entra na main até evidência de plataforma |
+| **v6 (candidata, 17/08)** | v4 + shot_gate=**hybrid** + **cb_stagger** + ot_relief 260 (`bot/genome_v6.json`) | candidata a seeding via EXAME | Desenho pelas 3 evidências: hybrid = threshold perto (d≤3200, t_bola≤9, GK cobre ±1235 — volume onde os gols nascem) + slack longe (t_bola 16-20, GK cobre ±2360 — mata as ~40 doações do 44-chutes); estático, imune ao bug da v5. cb_stagger = se TODOS os chasers eleitos são DEFENDERS com bola no nosso terço, troca o último por não-zagueiro (anti passe-entre-CBs do gol de ouro). Unit tests + smoke 2-0 L1 + latency 2,55ms OK; fila `bench/v6_queue.sh` rodando |
 
-**Plano da quota de 17/08 (rev. pós-0-0):**
-1. BotAdversario9 × **v4k** (pendente — teste do perfil-inanição)
-2. level-2 × **v5** (1º dado de L2 da história + estreia da v5)
-3. level-3 × **v5** (o exame do gate adaptativo contra o GK de 97,7%; baseline: 1-0/44 chutes da v4)
-4. BotAdversario1 × **v5** (repete o 0-0? vs eles a v5 ≡ v4 — nunca chegamos a 12 chutes)
-5. BotAdversario6 × v5 (scouting posse)
-Fluxo: subir `:v5` (`docker push repo.lugobots.ai/killua-zoldyck:v5`) e marcar main; para o jogo 1, main temporária = v4k e VOLTAR para v5 depois.
-**Bancada-patrick**: `docker push repo.lugobots.ai/patrick-estrela:v2bench` (imagem local pronta: v3+gk_track) → marcar main do patrick → 2-3× BotAdversario1 com a quota DELE = evidência real dos genes defensivos.
+**Resultado da quota de 17/08:** v4 × BotAdversario1 **0-0 (+0-1 gol de ouro na OT)**; v4 × level-3 **1-0** (44 chutes/2,3% conversão); v5 × level-3 **0-1** (bug do contador → REPROVADA; usuário reverteu main p/ v4 — nasce a REGRA DO EXAME).
+
+**Próxima quota — EXAME DA v6 (regra nova, nada entra na main sem passar):**
+1. Validação local termina primeiro (`bench/v6_queue.sh`: screenings hybrid/cb_stagger + compósito selfplay/sparring/wait). Se alguma trava reprovar, o exame é adiado e o gene culpado bissectado.
+2. Subir `:v6` e marcar main TEMPORÁRIA:
+```bash
+cd ~/lugo-quando-passar
+cp bot/genome_v6.json bot/genome_submit.json
+docker build -f .lugo/Dockerfile -t repo.lugobots.ai/killua-zoldyck:v6 .
+docker push repo.lugobots.ai/killua-zoldyck:v6   # marcar main na plataforma
+```
+3. **1× level-3** (meta: vitória com conversão >2,3% e MENOS de ~20 chutes doados) e **1× BotAdversario1** (meta: ≥0-0 no tempo normal; na OT estreia o ot_relief).
+4. **REVERTER main p/ v4** (re-marcar :v4) → só promover v6 se os DOIS exames ≥ v4. Depois `cp bot/genome_v4_candidate.json bot/genome_submit.json` para o repo refletir a main.
+**Bancada-patrick** (quota própria): `docker push repo.lugobots.ai/patrick-estrela:v2bench` (v3+gk_track pronto) → 1× BotAdversario1 = evidência do antídoto ao canto-longe.
 
 ## Scouting de adversários (mata-mata)
 
