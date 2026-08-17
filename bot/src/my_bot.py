@@ -81,6 +81,7 @@ class MyBot(lugo4py.Bot, ABC):
                 rt = getattr(self, "_reset_turn", None)
                 if rt is None or turn - rt > 30:
                     self._reset_turn = turn
+                    self._ko_abort = False   # v7 c0: idem via fallback
             if held and h.team_side == inspector.get_my_team_side():
                 self._last_our_hold = turn
             # P4 (counterpress): perda RECENTE fora do nosso terço arma a
@@ -759,6 +760,7 @@ class MyBot(lugo4py.Bot, ABC):
         # (setplays) só age com kickoff_play="on"; gravar o turno é inerte.
         try:
             self._reset_turn = snapshot.turn
+            self._ko_abort = False      # v7 c0: novo reset re-arma os setplays
         except Exception:
             pass
 

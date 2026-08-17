@@ -38,8 +38,17 @@ def _dir_sign(side):
 
 
 def active(bot, inspector):
-    """Janela do kickoff aberta? (gene on + dentro da janela + sem contra)."""
+    """Janela do kickoff aberta? (gene on + dentro da janela + sem contra).
+
+    CONSERTO (v7, commit 0): o aborto por contra usava `bot._reset_turn=None`,
+    o que matava o relógio do reset para TODOS os consumidores — inclusive os
+    genes que agem exatamente quando a corrida é PERDIDA (kickoff_race ring,
+    kickoff_shield). Agora aborta por flag `_ko_abort` (comportamento do
+    kickoff_play idêntico; `_reset_turn` preservado). A flag é zerada em
+    getting_ready e no fallback de reset do _update_transition."""
     if P.get("kickoff_play") != "on":
+        return False
+    if getattr(bot, "_ko_abort", False):
         return False
     rt = getattr(bot, "_reset_turn", None)
     if rt is None:
@@ -50,7 +59,7 @@ def active(bot, inspector):
     h = inspector.get_ball_holder()
     if (h is not None and h.number != 0
             and h.team_side != inspector.get_my_team_side()):
-        bot._reset_turn = None       # perdemos o kickoff: abortar a jogada
+        bot._ko_abort = True         # perdemos o kickoff: abortar a jogada
         return False
     return True
 
