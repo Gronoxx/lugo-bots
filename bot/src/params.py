@@ -148,6 +148,13 @@ DEFAULTS = {
     # corrida do recebedor (alem do meio-campo, no sentido de ataque).
     "kickoff_window": 40.0,
     "kickoff_run_depth": 3500.0,
+    # v7/METAMORFO (kickoff_blitz): janela estendida da blitz do NOSSO
+    # kickoff (bloco de 5 ao terço final em <=kb_window turnos), profundidade
+    # do canal e fração de avanço da bola que RELEASE o bloco ao fluxo normal
+    # (nunca sequestrar Jog1/Jog2 do finish_mode). BotAdversario2: gol aos 7s.
+    "kb_window": 100.0,
+    "kb_depth": 6500.0,
+    "kb_release": 0.62,
     # P3 (second_ball): apos NOSSO chute sem gol, a reposse da limpeza do GK
     # deles acontece a ~2300-3000 do gol em ~25 turnos e ELES ganham 61-83%
     # (deficit ~789d na corrida). Os sb_count ATACANTES nao-chasers mais
@@ -376,6 +383,11 @@ STRUCTURE_DEFAULTS = {
     # P2: playbook do kickoff (setplays.py): TAKER pega -> tabela ensaiada p/
     # RECV -> toque pro espaco -> cascata; RECV/onda-2 correm rotas. off = v3.
     "kickoff_play": "off",                 # | on
+    # v7/METAMORFO (kickoff_blitz): apos ganhar a corrida do reinicio, bloco
+    # de 5 (RECV+WAVE2+8/10) aprofunda ao terco final em <=kb_window, com
+    # release por avanco da bola/alcance de finalizacao. Par natural do
+    # init_variant="race" + kickoff_play. off = v6.
+    "kickoff_blitz": "off",                # | on
     # P3: ocupar a zona de limpeza do GK deles apos nosso chute sem gol.
     "second_ball": "off",                  # | on
     # v7/METAMORFO (swarm_rebound): 2-3 atacantes no ARCO de rebote do GK
@@ -518,6 +530,9 @@ BOUNDS = {
     "gk_clear_w_flank": (0.0, 3.0),
     "kickoff_window": (10.0, 80.0),
     "kickoff_run_depth": (1500.0, 6000.0),
+    "kb_window": (40.0, 160.0),
+    "kb_depth": (3000.0, 8500.0),
+    "kb_release": (0.45, 0.85),
     "sb_count": (0.0, 3.0),
     "sb_window": (5.0, 40.0),
     "sb_dist": (1500.0, 4000.0),
@@ -593,6 +608,7 @@ STRUCTURE_OPTIONS = {
     "support_catch": ["off", "on"],
     "init_variant": ["v3", "kick9", "fine", "sym", "race"],
     "kickoff_play": ["off", "on"],
+    "kickoff_blitz": ["off", "on"],
     "second_ball": ["off", "on"],
     "swarm_rebound": ["off", "on"],
     "attack_width": ["off", "on"],

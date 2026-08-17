@@ -24,6 +24,7 @@ import math
 import lugo4py
 
 import geometry as geo
+import tactics as tac
 from geometry import (BALL_MAX_SPEED, MAX_X, MAX_Y, dist, lead_target, point,
                       speed_for_distance, turns_for_ball, turns_for_player)
 from params import P
@@ -31,6 +32,7 @@ from params import P
 TAKER = 10
 RECV = 9
 WAVE2 = (7, 11)
+BLITZ_EXTRA = (8, 10)     # v7 (kickoff_blitz): somam-se a RECV+WAVE2 = bloco de 5
 
 
 def _dir_sign(side):
@@ -118,16 +120,63 @@ def hold_orders(bot, inspector, me, opponents):
     return None                       # (3) cascata normal
 
 
+def blitz_active(bot, inspector):
+    """v7/METAMORFO (kickoff_blitz): janela da blitz do NOSSO reinício —
+    corrida GANHA (ou em disputa), bloco ainda não chegou ao terço final.
+    RELEASE devolve os corpos ao fluxo (nunca sequestra o finish_mode):
+      - bola avançada além de kb_release; ou
+      - portador nosso já em alcance de finalização (+1500 = janela do
+        finish_mode); ou
+      - perdemos a bola (contra: aborta).
+    Fonte: BotAdversario2 7×0 — o PRÓPRIO kickoff convertido em blitz, gol aos 7s."""
+    if P.get("kickoff_blitz") != "on":
+        return False
+    rt = getattr(bot, "_reset_turn", None)
+    if rt is None or getattr(bot, "_ko_abort", False):
+        return False
+    turn = inspector.get_snapshot().turn
+    if turn < rt or turn - rt > P["kb_window"]:
+        return False
+    side = inspector.get_my_team_side()
+    h = inspector.get_ball_holder()
+    if h is not None and h.number != 0:
+        if h.team_side != side:
+            return False              # perdemos a corrida: sem blitz
+        gc = bot.mapper.get_attack_goal().get_center()
+        if dist(h.position, gc) <= P["dangerous_shot_range"] + 1500.0:
+            return False              # jogada madura: finish/cascata assumem
+    if tac.ball_advance_frac(inspector.get_ball().position,
+                             side) >= P["kb_release"]:
+        return False                  # bloco chegou: fluxo normal decide
+    return True
+
+
+def _blitz_route(me, side):
+    """Canal profundo da blitz: kb_depth além do meio-campo, no próprio y."""
+    x = MAX_X / 2.0 + _dir_sign(side) * P["kb_depth"]
+    y = max(1200.0, min(MAX_Y - 1200.0, float(me.position.y)))
+    return point(x, y)
+
+
 def route_orders(bot, inspector, me, safe_move_fn):
     """Rotas do RECV/onda-2 durante a janela (supporting/disputing).
-    None = fluxo normal. `safe_move_fn(target) -> Order`."""
-    if not active(bot, inspector):
-        return None
+    None = fluxo normal. `safe_move_fn(target) -> Order`.
+    v7 (kickoff_blitz): terminada/ausente a janela ensaiada, o bloco de 5
+    (RECV+WAVE2+BLITZ_EXTRA, exceto o portador) aprofunda ao terço final."""
     side = inspector.get_my_team_side()
-    if me.number == RECV:
-        return [safe_move_fn(_recv_route(me, side)),
-                inspector.make_order_catch()]
-    if me.number in WAVE2:
-        return [safe_move_fn(_wave2_route(me, side)),
-                inspector.make_order_catch()]
+    if active(bot, inspector):
+        if me.number == RECV:
+            return [safe_move_fn(_recv_route(me, side)),
+                    inspector.make_order_catch()]
+        if me.number in WAVE2:
+            return [safe_move_fn(_wave2_route(me, side)),
+                    inspector.make_order_catch()]
+    if blitz_active(bot, inspector):
+        h = inspector.get_ball_holder()
+        hnum = (h.number if (h is not None and h.number != 0
+                             and h.team_side == side) else -1)
+        if me.number != hnum and (me.number == RECV or me.number in WAVE2
+                                  or me.number in BLITZ_EXTRA):
+            return [safe_move_fn(_blitz_route(me, side)),
+                    inspector.make_order_catch()]
     return None
