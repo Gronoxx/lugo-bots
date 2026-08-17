@@ -1052,6 +1052,18 @@ class MyBot(lugo4py.Bot, ABC):
         zone_escape_on = (P.get("zone_escape") == "on"
                           and tac.ball_advance_frac(me.position, side) < 1.0 / 3.0)
 
+        # v7/METAMORFO (outlet_press_detect): CERCO no terço defensivo
+        # (>= opd_min_opps adversários em opd_radius) => passe curto CENTRAL
+        # proibido — é a bola que o pressing do BotAdversario1 come (modo-de-perder
+        # nº3; BotAdversario2 fez 5×0 com 5 erros de passe no jogo). O escape sai
+        # curto-de-corredor ou longo. GK receptor ISENTO (gk_outlet segue
+        # legal: recuo à zona-1400 é seguro por construção). off = v9.
+        # Mock-safe: só me/opponents/side (decide_dump não tem snapshot).
+        opd_on = (P.get("outlet_press_detect") == "on"
+                  and tac.ball_advance_frac(me.position, side) < 1.0 / 3.0
+                  and self._opps_within(me.position, opponents,
+                                        P["opd_radius"]) >= P["opd_min_opps"])
+
         # P5 (gs_retain_late/gs_draw_ok): NAO-perdendo no fim de jogo, proteger
         # o resultado — retencao habilitada (reciclo seguro em vez de risco).
         # No mata-mata o EMPATE e' do melhor seed: gs_draw_ok liga-se POR
@@ -1145,6 +1157,12 @@ class MyBot(lugo4py.Bot, ABC):
                 inward = 350.0 if side == lugo4py.TeamSide.HOME else -350.0
                 target = point(target.x + inward, target.y)
 
+            # v7 (outlet_press_detect): sob cerco, veta o curto central.
+            if (opd_on and mate.number != tac.GOALKEEPER
+                    and d < P["opd_short_dist"]
+                    and abs(target.y - MAX_Y / 2.0) < P["opd_center_halfwidth"]):
+                continue
+
             # Fase A — reforço cirúrgico #1: segurança com a velocidade REALMENTE
             # executada. kick_to pode entregar menos que a planejada (redução por
             # ângulo + soma à velocidade atual da bola); checar o veto com a
@@ -1234,6 +1252,12 @@ class MyBot(lugo4py.Bot, ABC):
                 elif recv_state == "perigo":
                     recv_bonus = -P["pass_w_recv_free"]
 
+            # v7 (outlet_press_detect): preferência de corredor sob cerco
+            # (0.0 = só o veto; soma 0 => decisão idêntica com gene off).
+            flank_bonus = 0.0
+            if opd_on and P["opd_w_flank"] > 0.0:
+                flank_bonus = P["opd_w_flank"] * abs(target.y - MAX_Y / 2.0)
+
             score = (advance
                      + P["pass_w_clearance"] * clearance
                      - P["pass_w_mate_pressure"] * mate_pressure
@@ -1242,7 +1266,8 @@ class MyBot(lugo4py.Bot, ABC):
                      - P["pass_w_overmark"] * max(0.0, mate_pressure
                                                   - P["pass_mark_threshold"])
                      + safety
-                     + recv_bonus)
+                     + recv_bonus
+                     + flank_bonus)
 
             # candidato de RETENÇÃO: passe seguro que perde menos avanço, recuo
             # LIMITADO por pass_retain_backmax. Habilitado por pass_retain="on" OU
@@ -1797,6 +1822,13 @@ class MyBot(lugo4py.Bot, ABC):
             if d < R:
                 p += (R - d) / R
         return p
+
+    @staticmethod
+    def _opps_within(pos, opponents, radius) -> int:
+        """v7 (outlet_press_detect): CONTAGEM crua de adversários em `radius`
+        (a _pressure_on é soma ponderada — não serve de contagem de cerco).
+        Mock-safe: só posições."""
+        return sum(1 for o in opponents if dist(pos, o.position) <= radius)
 
     @staticmethod
     def _player_status(pos, opponents, opp_gk, goal_center):

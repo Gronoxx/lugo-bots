@@ -211,6 +211,15 @@ DEFAULTS = {
     # v7/METAMORFO (ot_press): elevacao da linha de apoio na prorrogacao
     # (aggression_support + isto, teto 1.5). Reusa cp_extra p/ o chaser extra.
     "ot_aggr_boost": 0.4,
+    # v7/METAMORFO (outlet_press_detect): cerco = >=opd_min_opps adversarios
+    # em opd_radius do portador no terco defensivo -> veto do passe curto
+    # (<opd_short_dist) central (|y-5000|<opd_center_halfwidth); opd_w_flank
+    # opcionalmente premia corredor (0 = so veto).
+    "opd_radius": 2500.0,
+    "opd_min_opps": 3.0,
+    "opd_short_dist": 2200.0,
+    "opd_center_halfwidth": 1800.0,
+    "opd_w_flank": 0.0,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -446,6 +455,10 @@ STRUCTURE_DEFAULTS = {
     # gol de ouro = jogo de uma chance, quem cria primeiro ganha. Par do
     # ot_gate_relief. Localmente invisivel (sem OT). off = v6.
     "ot_press": "off",                     # | on
+    # v7/METAMORFO (outlet_press_detect): saida imune ao pressing — sob cerco
+    # no terco defensivo o passe curto central e' vetado (a bola do 5×0 do
+    # BotAdversario2: 5 erros no jogo inteiro; nosso modo-de-perder nº3). off = v9.
+    "outlet_press_detect": "off",          # | on
     # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
     # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
     # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
@@ -578,6 +591,11 @@ BOUNDS = {
     "ag_max_goals": (0.0, 3.0),
     "ot_gate_relief": (0.0, 600.0),
     "ot_aggr_boost": (0.0, 1.0),
+    "opd_radius": (1200.0, 5000.0),
+    "opd_min_opps": (2.0, 5.0),
+    "opd_short_dist": (800.0, 4000.0),
+    "opd_center_halfwidth": (600.0, 3500.0),
+    "opd_w_flank": (0.0, 1.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
@@ -648,6 +666,7 @@ STRUCTURE_OPTIONS = {
     "shot_gate_adaptive": ["off", "on"],
     "cb_stagger": ["off", "on"],
     "ot_press": ["off", "on"],
+    "outlet_press_detect": ["off", "on"],
 }
 
 
