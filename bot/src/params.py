@@ -37,7 +37,11 @@ DEFAULTS = {
     "shot_min_xg": 0.10,
     # gate TEMPORAL (shot_gate="slack"): slack = |alvo.y-gk.y| - (560+gk_reach_speed*t)
     "shot_min_slack": 0.0,     # autoriza o chute se slack > isto (calibrado: >0)
-    "gk_reach_speed": 75.0,    # calibrado (AUC 0.87 vs gol). NÃO usar 200 (erro v6/v8)
+    # 75 = empírico vs level-1 (AUC 0.87; GK fraco reage mal). Contra GK-ELITE
+    # usar 100 no genoma = CAP físico do deslocamento do goleiro no servidor
+    # (retro 17/08: 100 nega 53/74 longes estéreis vs GK-forte e mantém 9/11
+    # gols de longe vs L1; 120+ dobra o custo). NÃO usar 200 (erro v6/v8).
+    "gk_reach_speed": 75.0,
     # gate HÍBRIDO (shot_gate="hybrid"): d<=isto usa threshold (volume perto —
     # t_bola<=9 => GK cobre +-1235, batível), d>isto usa slack (longe contra GK
     # posicionado é morto: t_bola 16-20 => cobre +-2360; v4 doou ~40 chutes vs L3).

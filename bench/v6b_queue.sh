@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 PY=~/lugo-bots/.venv/bin/python
 
 V4='{"pass_endpoint_race":"on","pass_exec_speed":"on","pass_touch_lead":"on","pass_status_mode":"on","cover_mode":"on","gk_outlet":"on","gk_jump_mode":"strict","finish_mode":"on","second_ball":"on"}'
-V6EXTRA='{"shot_gate":"hybrid","ot_gate_relief":260}'
+V6EXTRA='{"shot_gate":"hybrid","gk_reach_speed":100,"ot_gate_relief":260}'
 L1=lugobots/level-1:latest
 
 echo "=== v6b_queue $(date '+%F %T') ==="
