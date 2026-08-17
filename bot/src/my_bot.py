@@ -756,6 +756,8 @@ class MyBot(lugo4py.Bot, ABC):
                     cover = point(
                         g.x + (cover.x - g.x) / (gd or 1.0) * P["def_min_depth"],
                         g.y + (cover.y - g.y) / (gd or 1.0) * P["def_min_depth"])
+            # v7 (kickoff_shield): compactar o corredor central pós-reset.
+            cover = self._shield_clamp(inspector, cover)
             return [safe_move(inspector, me, cover),
                     inspector.make_order_catch()]
 
@@ -846,6 +848,8 @@ class MyBot(lugo4py.Bot, ABC):
                 base = tac.formation_position(self.number, ball.position, side,
                                               aggression=P["aggression_defend"])
                 base = self._cover_position(inspector, base)
+            # v7 (kickoff_shield): compactar o corredor central pós-reset.
+            base = self._shield_clamp(inspector, base)
             return [safe_move(inspector, me, base),
                     inspector.make_order_catch()]
 
@@ -1759,6 +1763,33 @@ class MyBot(lugo4py.Bot, ABC):
         slot = chosen.index(self.number)
         off = (slot - (len(chosen) - 1) / 2.0) * 800.0
         return point(ex, max(300.0, min(MAX_Y - 300.0, ey + off)))
+
+    def _shield_clamp(self, inspector, base):
+        """v7/METAMORFO (kickoff_shield): por ks_turns pós-reset, DEFENDERS e
+        MIDFIELDERS têm o Y da posição de FORMAÇÃO clampado ao corredor
+        central (|y-5000| <= ks_halfwidth). SÓ y — nunca recua x, nunca
+        empurra ninguém ao centro (clamp = min/max: quem já está no corredor
+        fica intocado). Fecha a janela ~15s pós-kickoff/pós-gol em que o BotAdversario1
+        novo marca (único gol dele no 1×1: transição central contra bloco
+        desorganizado 16s pós-gol). Modificador do fallback de formação:
+        perde para TODOS os branches anteriores. off = base intocada."""
+        if P.get("kickoff_shield") != "on":
+            return base
+        if (self.number not in tac.DEFENDERS
+                and self.number not in tac.MIDFIELDERS):
+            return base
+        rt = getattr(self, "_reset_turn", None)
+        if rt is None:
+            return base
+        try:
+            turn = inspector.get_snapshot().turn
+        except Exception:
+            return base
+        if turn < rt or turn - rt > P["ks_turns"]:
+            return base
+        lo = MAX_Y / 2.0 - P["ks_halfwidth"]
+        hi = MAX_Y / 2.0 + P["ks_halfwidth"]
+        return point(base.x, max(lo, min(hi, base.y)))
 
     def _cover_position(self, inspector, base):
         """Posição defensiva: entre a bola e o nosso gol, perto do posto."""

@@ -227,6 +227,10 @@ DEFAULTS = {
     "cpw_window": 50.0,
     "cpw_min_frac": 0.5,
     "cpw_lane_frac": 0.5,
+    # v7/METAMORFO (kickoff_shield): janela pos-reset (200t=10s) e meia-
+    # largura do corredor central da formacao de DEFENDERS+MIDS.
+    "ks_turns": 200.0,
+    "ks_halfwidth": 2200.0,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -472,6 +476,12 @@ STRUCTURE_DEFAULTS = {
     # DEFENDERS nunca (re-roubo do BotAdversario2: BotAdversario1 21 roubadas/0 finalizacoes).
     # CRITERIO DE MORTE pre-declarado: gols PRO nao podem cair no A/B. off=v6.
     "counter_press_window": "off",         # | on
+    # v7/METAMORFO (kickoff_shield): ~10s pos-QUALQUER reset, DEFENDERS+MIDS
+    # com o Y da FORMACAO clampado ao corredor central — fecha a unica janela
+    # onde o BotAdversario1 novo marcou (transicao central pos-gol vs bloco
+    # desorganizado). So y; x intocado; so o fallback de formacao. RISCO
+    # lei-da-passividade: criterio de morte = gols PRO nao podem cair. off=v6.
+    "kickoff_shield": "off",               # | on
     # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
     # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
     # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
@@ -612,6 +622,8 @@ BOUNDS = {
     "cpw_window": (20.0, 80.0),
     "cpw_min_frac": (0.4, 0.8),
     "cpw_lane_frac": (0.25, 0.8),
+    "ks_turns": (40.0, 400.0),
+    "ks_halfwidth": (1200.0, 4000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
@@ -684,6 +696,7 @@ STRUCTURE_OPTIONS = {
     "ot_press": ["off", "on"],
     "outlet_press_detect": ["off", "on"],
     "counter_press_window": ["off", "on"],
+    "kickoff_shield": ["off", "on"],
 }
 
 
