@@ -571,7 +571,7 @@ STRUCTURE_OPTIONS = {
     "gk_clear_mode": ["v9", "safe"],
     "rebound_crash": ["off", "on"],
     "support_catch": ["off", "on"],
-    "init_variant": ["v3", "kick9", "fine", "sym"],
+    "init_variant": ["v3", "kick9", "fine", "sym", "race"],
     "kickoff_play": ["off", "on"],
     "second_ball": ["off", "on"],
     "attack_width": ["off", "on"],

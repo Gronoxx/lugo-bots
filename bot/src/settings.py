@@ -73,10 +73,32 @@ if _VARIANT == "sym":
         11: (9500, 7400),
     })
 
+if _VARIANT == "race":
+    # v7 (METAMORFO): o kickoff é uma CORRIDA decidida pela init_position
+    # (1º toque em reset+13; ~3-9 reinícios/jogo). "race" = tabela sym
+    # inteira (22/22 validada; #10 a d=1500 do centro GANHA a corrida de
+    # qualquer init >=1581) com UMA mudança: #11 aperta de (9500,7400)
+    # p/ (9500,6600) — d=1676 do centro, espelho do #9 (9500,3400) já
+    # validado — encurtando a onda-2 alta do playbook/blitz. Nenhuma
+    # coordenada nova a d<1676; nada de beirar o círculo (d=1051 = W.O.).
+    _COORDS.update({
+        1:  (1500, 4600),
+        2:  (3500, 2600),
+        3:  (3500, 4600),
+        4:  (3500, 5400),
+        5:  (3500, 7400),
+        6:  (6500, 3400),
+        7:  (5500, 5000),
+        8:  (6500, 6600),
+        9:  (9500, 3400),
+        10: (8500, 5000),
+        11: (9500, 6600),
+    })
+
 if _VARIANT == "fine":
     MAPPER_COLS = 200
     MAPPER_ROWS = 100
-elif _VARIANT == "sym":
+elif _VARIANT in ("sym", "race"):
     MAPPER_COLS = 20
     MAPPER_ROWS = 25
 else:
