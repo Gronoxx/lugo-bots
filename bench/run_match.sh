@@ -25,8 +25,12 @@ rm -f "recordings/${MATCH_ID}.json"
 # chegada varia — é ruído do nosso laboratório, não do jogo. `wait` dá 50 ms a
 # todos, reproduz o que os composes dos rivais usam, e apesar de a partida
 # demorar mais, exige tão menos repetições que sai MAIS BARATO no total.
+# KNOCKOUT_DIFF (escada de goleada): eleva o teto de saldo do knockout do
+# servidor (default 10 = regra de misericórdia oficial). Sem a variável, o
+# comportamento é o oficial.
 python3 gen_compose.py --home "$HOME_BOT" --away "$AWAY_BOT" \
     --timer-mode "${TIMER_MODE:-wait}" \
+    ${KNOCKOUT_DIFF:+--knockout-diff "$KNOCKOUT_DIFF"} \
     --headless --quiet --match-id "$MATCH_ID" --out "$COMPOSE" >/dev/null
 
 docker-compose -p "lugo_$MATCH_ID" -f "$COMPOSE" up -d >/dev/null 2>&1

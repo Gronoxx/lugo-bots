@@ -77,6 +77,13 @@ def main():
                     help="publica portas 5000/8080 no host (quebra paralelismo; "
                          "só p/ assistir/anexar a uma partida)")
     ap.add_argument("--out", default="docker-compose.yml")
+    # ESCADA DE GOLEADA (18/08): o servidor encerra por "knockout" quando a
+    # diferença passa de --knockout-score-diff (default 10) após
+    # --knockout-time-limit (1min) — é a regra de misericórdia da plataforma.
+    # Para medir o TETO real do nosso ataque no laboratório, elevamos esse
+    # limite; sem a flag, o comportamento oficial é preservado.
+    ap.add_argument("--knockout-diff", type=int, default=None,
+                    help="teto de saldo p/ knockout (servidor: default 10)")
     a = ap.parse_args()
 
     extra = []
@@ -84,6 +91,8 @@ def main():
         extra.append("--headless")
     if a.quiet:
         extra.append("--quiet")
+    if a.knockout_diff is not None:
+        extra.append(f"--knockout-score-diff={a.knockout_diff}")
 
     ports = PORTS_BLOCK if a.publish else ""
     parts = [TPL_HEADER.format(timer_mode=a.timer_mode, match_id=a.match_id,
