@@ -209,7 +209,79 @@ class MyBot(lugo4py.Bot, ABC):
             boost = max(boost, int(round(P["cp_extra"])))
         return n + boost
 
+    def _press_shadow_target(self, inspector, me, side):
+        """v7/CENAS (press_shadow — solução 1 do usuário, gol da v6 vs BotAdversario1):
+        o chaser aproxima PELA SOMBRA do passe nas costas — ponto na linha
+        portador→receptor mais perigoso (adversário de linha mais fundo que o
+        portador, o mais próximo dele) — e só ataca a bola direto quando chega
+        a ps_engage_dist. Fecha a linha ENQUANTO pressiona: mesma contagem de
+        pressers, rota curva (o passe fatal real passou a 315 do presser).
+        None = perseguição normal."""
+        if P.get("press_shadow") != "on":
+            return None
+        h = inspector.get_ball_holder()
+        if h is None or h.number == 0 or h.team_side == side:
+            return None
+        d_h = dist(me.position, h.position)
+        if d_h <= P["ps_engage_dist"]:
+            return None                    # colado: ataque normal à bola
+        ourg = self.mapper.get_defense_goal().get_center()
+        dg_h = dist(h.position, ourg)
+        recvs = [o for o in inspector.get_opponent_players()
+                 if o.number != h.number and o.number != tac.GOALKEEPER
+                 and dist(o.position, ourg) < dg_h - 300.0]
+        if not recvs:
+            return None
+        r = min(recvs, key=lambda o: (dist(o.position, h.position), o.number))
+        f = P["ps_lane_frac"]
+        return point(h.position.x + (r.position.x - h.position.x) * f,
+                     h.position.y + (r.position.y - h.position.y) * f)
+
+    def _press_hold_mark(self, inspector, elected):
+        """v7/CENAS (press_hold_mark — solução 2 do usuário, versão
+        SUBSTITUIÇÃO): eleito que é o nosso marcador natural de um atacante
+        FUNDO (mais perto do nosso gol que a bola − phm_margin) não vai à
+        pressão — o próximo do ranking de chegada assume (MESMO nº de
+        pressers; remoção pura violaria a lei da passividade)."""
+        if P.get("press_hold_mark") != "on" or not elected:
+            return elected
+        try:
+            ourg = self.mapper.get_defense_goal().get_center()
+            ball = inspector.get_ball()
+            d_ball = dist(ball.position, ourg)
+            deep = [o for o in inspector.get_opponent_players()
+                    if o.number != tac.GOALKEEPER
+                    and dist(o.position, ourg) < d_ball - P["phm_margin"]]
+            if not deep:
+                return elected
+            ours = [p for p in inspector.get_my_team_players()
+                    if p.number != tac.GOALKEEPER]
+            markers = set()
+            for o in deep:
+                m = min(ours, key=lambda p: (dist(p.position, o.position),
+                                             p.number))
+                markers.add(m.number)
+            if not any(n in markers for n in elected):
+                return elected
+            free = [p for p in ours
+                    if p.number not in elected and p.number not in markers]
+            ranked = tac.rank_by_ball_arrival(free, ball) if free else []
+            out, ri = [], 0
+            for n in elected:
+                if n in markers and ri < len(ranked):
+                    out.append(ranked[ri].number)
+                    ri += 1
+                else:
+                    out.append(n)
+            return out
+        except Exception:
+            return elected
+
     def _staggered_chasers(self, inspector, n):
+        elected = self._staggered_chasers_base(inspector, n)
+        return self._press_hold_mark(inspector, elected)
+
+    def _staggered_chasers_base(self, inspector, n):
         """Eleição de chasers com escalonamento anti-CB (cb_stagger, v6).
 
         off: delega exatamente à eleição atual (inércia por code-path).
@@ -688,6 +760,12 @@ class MyBot(lugo4py.Bot, ABC):
             chasers = self._staggered_chasers(inspector, n_ch)
 
             if self.number in chasers:
+                # v7/CENAS (press_shadow): aproximar pela sombra do passe
+                # nas costas antes de atacar a bola. off = rota direta.
+                ps = self._press_shadow_target(inspector, me, side)
+                if ps is not None:
+                    return [safe_move(inspector, me, ps),
+                            inspector.make_order_catch()]
                 # pressiona o portador pelo lado do nosso gol (corta o avanço)
                 r = geo.intercept_turn(me.position, ball)
                 target = r[1] if r else ball.position
@@ -785,6 +863,12 @@ class MyBot(lugo4py.Bot, ABC):
             chasers = self._staggered_chasers(inspector, n_ch)
 
             if self.number in chasers:
+                # v7/CENAS (press_shadow): idem na bola disputada com dono
+                # de fato (holder None aqui = sombra inerte por construção).
+                ps = self._press_shadow_target(inspector, me, side)
+                if ps is not None:
+                    return [safe_move(inspector, me, ps),
+                            inspector.make_order_catch()]
                 r = geo.intercept_turn(me.position, ball)
                 target = r[1] if r else ball.position
                 return [safe_move(inspector, me, target),

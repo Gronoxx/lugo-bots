@@ -239,6 +239,14 @@ DEFAULTS = {
     "qe_y_off": 1200.0,
     "qe_minfrac": 0.62,
     "qe_zone_alarm": 25.0,
+    # v7/CENAS (press_shadow): distancia ao portador abaixo da qual o chaser
+    # larga a sombra e ataca a bola; fracao da linha portador->receptor onde
+    # a sombra se planta.
+    "ps_engage_dist": 1200.0,
+    "ps_lane_frac": 0.45,
+    # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
+    # nosso gol que a bola menos esta margem.
+    "phm_margin": 500.0,
 
     # condução
     "carry_repulsion_radius": 2000.0,
@@ -641,6 +649,9 @@ BOUNDS = {
     "qe_y_off": (300.0, 2200.0),
     "qe_minfrac": (0.5, 0.85),
     "qe_zone_alarm": (10.0, 39.0),
+    "ps_engage_dist": (600.0, 2500.0),
+    "ps_lane_frac": (0.2, 0.8),
+    "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
     "support_advance": (800.0, 5000.0),
@@ -715,6 +726,8 @@ STRUCTURE_OPTIONS = {
     "counter_press_window": ["off", "on"],
     "kickoff_shield": ["off", "on"],
     "quina_entry": ["off", "on"],
+    "press_shadow": ["off", "on"],
+    "press_hold_mark": ["off", "on"],
 }
 
 
