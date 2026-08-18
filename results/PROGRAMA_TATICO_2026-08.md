@@ -117,6 +117,25 @@ docker push repo.lugobots.ai/killua-zoldyck:v6   # marcar main na plataforma
 4. **REVERTER main p/ v4** (re-marcar :v4) → só promover v6 se os DOIS exames ≥ v4. Depois `cp bot/genome_v4_candidate.json bot/genome_submit.json` para o repo refletir a main.
 **Bancada-patrick** (quota própria): `docker push repo.lugobots.ai/patrick-estrela:v2bench` (v3+gk_track pronto) → 1× BotAdversario1 = evidência do antídoto ao canto-longe.
 
+**PARTIDA OFICIAL vs LEVEL-1 (18/08, mid `partida-25`): 1×0 — PROBLEMA DE SALDO.** Stats:
+**218 passes certos (99,1%) para 2 finalizações**, `campo_adv` 27,6% (posse quase toda no NOSSO
+campo), 137 bolas roubadas pelo L1 (que persegue em bando; nosso portador conduz sozinho).
+**Régua do mesmo dia: BotAdversario2 10×0, BotAdversario11 5×0, BotAdversario5 3×0, nós 1×0** — e o desempate do
+seeding é SALDO, com só 8 vagas. Temos o melhor acerto de passe da competição e o pior volume:
+jogamos para não errar. **Causa no código:** no score de `_best_pass` os termos de segurança
+(clearance/pressão) superam o AVANÇO → o bot prefere o lateral seguro, 218×. Genes novos
+(inertes por default, decide_dump byte-igual): **`pass_w_advance`** (peso do avanço) e
+**`shot_rebound_relief`** (o gate afrouxa por corpo no arco de rebote — economia do BotAdversario2).
+
+**PACOTE DE GOLEADA (G1) — o lever que faltava era SUBIR A LINHA.** vs level-1 (16 jogos,
+rush): G1 = `pass_w_advance 2,5` + `aggression_support 0,6→1,0` + `shift_x 0,30→0,45` +
+`shot_gate threshold` + `shot_min_gap 1000` + swarm + `srr 300` → **gf 1,56→2,88 (+85%),
+finalizações 5,06→9,06 (+79%), ga 0,00→0,00, 10V/6E → 15V/1E**. G2 (mesmo ataque SEM mexer na
+formação): gf 2,12→2,62 (+24%), fin 6,19→8,25. **A formação alta vale ~60 pontos percentuais
+de gol.** Custo defensivo medido nas cenas: v8 (defesa v7.4 + ataque G1) = 128/130, e a perda
+está TODA na `adv9_v4_169` (caos de área do BotAdversario9 — bot FORA do torneio oficial); as cenas
+de BotAdversario1 e level-3 seguem 10/10. Sem as mudanças de formação: 130/130 mas só +24% de gol.
+
 **BISSEÇÃO DA 6ª LEI + v7.3/v7.4 (18/08).** Blocos isolados vs level-1 (32 jogos rush cada,
 base=v6): **kickoff-pack** (race+play+blitz+ring) **✓ +29% finalizações** (4,31→5,56), gf
 1,81→2,00; **gk-pack+ot** (gk_clear=safe+gk_collect+ot_press) **✓** gf 2,31→2,81; **BotAdversario1-pack**
@@ -129,7 +148,16 @@ em si.** Busca do pacote-cenas mínimo (4 variantes × 130 runs): só-positivos 
 126, +dd(0,33) 129, ambos **130**; e o recuo mantém 130/130 com gatilho apertado a 0,22/0,25/0,28
 — ou seja, **basta recuar nos 22% mais fundos** (ameaça real; não é passividade).
 **v7.4-candidata = v6 + kickoff-pack + swarm + BotAdversario1-pack + gk-pack + ot + dd(0,22) + holdmark**
-(`bot/genome_v74_candidate.json`, 26 genes): cenas **130/130**; travas C3/C2 em curso.
+(`bot/genome_v74_candidate.json`, 26 genes): cenas **130/130**.
+**TRAVAS DA v7.4 — PASSARAM pelos critérios pré-declarados.** C3 wait-L1: **empate técnico
+exato** (gf 1,88=1,88, ga 0,12=0,12, finalizações 4,19=4,19; opp_danger 556→503) — o dreno da
+v7.3 SUMIU. C2 sparring: gf 0,12=0,12 e **ga 0,62→0,50** (−19%), interceptados z=−1,75; custo =
+finalizações 7,62→4,38 contra pressing pesado. **A descoberta que explica o C3 neutro: contra o
+level-1 os DOIS braços já ganhavam 100% dos kickoffs (sem margem); contra bot da NOSSA CLASSE
+(sparring) a corrida foi 43%→100% (16 perdidas→0).** O pacote foi desenhado para L3/BotAdversario1/
+BotAdversario2, não para o L1 — as travas locais são guarda-corpo ("não pode piorar"), e o ganho só
+mede na plataforma ou vs muralha local. Em curso: v7.4 × BotAdversario2clone (muralha = proxy de L3) e
+C1 self-play.
 
 **TRAVAS DA v7.2-COMPLETA (18/08): C1 OK (31E/1D, sem desastre) mas C2/C3 REPROVARAM —
 6ª LEI DA PASSIVIDADE, forma nova: A COMPOSIÇÃO.** Cada gene passou solo; os 26 juntos
