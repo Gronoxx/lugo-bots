@@ -258,6 +258,9 @@ DEFAULTS = {
     # segunda bola. 0 = inerte (=v6).
     "srr_per_body": 0.0,
     "srr_radius": 2600.0,
+    # v7.5/MARGEM (pass_w_advance): multiplicador do AVANÇO no score do passe.
+    # 1.0 = v9 (inerte). >1 empurra a bola p/ frente em vez de reciclar.
+    "pass_w_advance": 1.0,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -682,6 +685,7 @@ BOUNDS = {
     "dd_maxfrac": (0.2, 0.6),
     "srr_per_body": (0.0, 800.0),
     "srr_radius": (1500.0, 4000.0),
+    "pass_w_advance": (0.5, 4.0),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),

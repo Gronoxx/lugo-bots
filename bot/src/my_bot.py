@@ -1454,7 +1454,12 @@ class MyBot(lugo4py.Bot, ABC):
             if opd_on and P["opd_w_flank"] > 0.0:
                 flank_bonus = P["opd_w_flank"] * abs(target.y - MAX_Y / 2.0)
 
-            score = (advance
+            # v7.5/MARGEM (pass_w_advance): peso do AVANÇO no score do passe.
+            # 1.0 = v9 (inerte). Diagnóstico do 1×0 oficial vs level-1: 218
+            # passes certos para 2 finalizações, posse quase toda no nosso
+            # campo — os termos de segurança superavam o avanço e a bola
+            # circulava em vez de progredir.
+            score = (P["pass_w_advance"] * advance
                      + P["pass_w_clearance"] * clearance
                      - P["pass_w_mate_pressure"] * mate_pressure
                      + P["pass_w_pressure_bonus"] * pressure_bonus(pressure)
