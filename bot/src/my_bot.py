@@ -950,8 +950,13 @@ class MyBot(lugo4py.Bot, ABC):
             # F1 (disputing_mode="defend"): bola livre no NOSSO campo = momento
             # do rebote adversário; recuar como em DEFENDING (na v2 a linha
             # SOBE no instante do chute deles: aggression 0.0 sem recuo).
+            # v7.3 (dd_maxfrac): fração máxima de avanço da bola que ainda
+            # recua — 0.5 = comportamento histórico; 0.33 = só bola FUNDA
+            # (versão situacional do pacote-cenas; a 6ª lei mostrou que o
+            # recuo em meio-campo drena o ataque na COMPOSIÇÃO).
             if (P.get("disputing_mode") == "defend"
-                    and tac.ball_advance_frac(ball.position, side) < 0.5):
+                    and tac.ball_advance_frac(ball.position, side)
+                    < P["dd_maxfrac"]):
                 base = tac.formation_position(self.number, ball.position, side,
                                               aggression=P["aggression_defend"])
                 base = self._cover_position(inspector, base)
