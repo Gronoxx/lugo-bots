@@ -244,6 +244,11 @@ DEFAULTS = {
     # a sombra se planta.
     "ps_engage_dist": 1200.0,
     "ps_lane_frac": 0.45,
+    # v7/CENAS (panic_clear): raio da zona vermelha (do nosso gol), raio e
+    # contagem do cerco que disparam o chutao de emergencia do jogador de linha.
+    "pc_radius": 2500.0,
+    "pc_press_radius": 1800.0,
+    "pc_opps": 2.0,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -507,6 +512,9 @@ STRUCTURE_DEFAULTS = {
     # aproxima pela SOMBRA do passe nas costas (linha portador->receptor mais
     # fundo) e so ataca a bola colado — fecha a linha ENQUANTO pressiona.
     "press_shadow": "off",                 # | on
+    # v7/CENAS (panic_clear): holder de LINHA na zona vermelha sob cerco =>
+    # chutao imediato ao corredor (clear de emergencia; o GK ja tinha o dele).
+    "panic_clear": "off",                  # | on
     # v7/CENAS (press_hold_mark — solução 2, versao SUBSTITUICAO): eleito que
     # marca atacante fundo e trocado pelo proximo do rank (mesmo nº de
     # pressers; remocao pura violaria a lei da passividade).
@@ -659,6 +667,9 @@ BOUNDS = {
     "qe_zone_alarm": (10.0, 39.0),
     "ps_engage_dist": (600.0, 2500.0),
     "ps_lane_frac": (0.2, 0.8),
+    "pc_radius": (1500.0, 4000.0),
+    "pc_press_radius": (800.0, 3000.0),
+    "pc_opps": (1.0, 4.0),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
@@ -736,6 +747,7 @@ STRUCTURE_OPTIONS = {
     "quina_entry": ["off", "on"],
     "press_shadow": ["off", "on"],
     "press_hold_mark": ["off", "on"],
+    "panic_clear": ["off", "on"],
 }
 
 

@@ -370,8 +370,11 @@ def run_scene(scene, seed=0, jitter=120.0, log=None):
             if log is not None and os.environ.get("SCENE_TRACE"):
                 hstr = ("-" if s.holder is None
                         else f"{'H' if s.holder[0]==F.HOME else 'A'}{s.holder[1]+1}")
+                gk_act = ",".join(orders_h[0].keys()) if orders_h[0] else "?"
                 log.append((t, f"h={hstr} b=({s.ball_pos[0]:.0f},"
-                               f"{s.ball_pos[1]:.0f})"))
+                               f"{s.ball_pos[1]:.0f}) bv=({s.ball_vel[0]:.0f},"
+                               f"{s.ball_vel[1]:.0f}) gk[{gk_act}]"
+                               f"@{s.pos[F.HOME,0,1]:.0f}"))
             if s.score[F.AWAY] > 0:
                 if log is not None:
                     log.append((t, "GOL pós-captura"))

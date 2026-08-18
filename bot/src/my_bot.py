@@ -470,6 +470,21 @@ class MyBot(lugo4py.Bot, ABC):
                     tgt, spd = cross
                     return [geo.kick_to(inspector, me, inspector.get_ball(), tgt, spd)]
 
+            # v7/CENAS (panic_clear): bola dominada DENTRO da nossa zona
+            # vermelha sob cerco → chutão IMEDIATO ao corredor (o clear de
+            # emergência que só o GK tinha; 4 dos 7 gols do 3×7 nasceram de
+            # tentar JOGAR no caos da área). off = v6.
+            if P.get("panic_clear") == "on":
+                ourg_pc = self.mapper.get_defense_goal().get_center()
+                if (dist(me.position, ourg_pc) < P["pc_radius"]
+                        and self._opps_within(me.position, opponents,
+                                              P["pc_press_radius"])
+                        >= P["pc_opps"]):
+                    far_y = 500.0 if me.position.y > MAX_Y / 2 else MAX_Y - 500.0
+                    tgt_pc = point(MAX_X / 2.0, far_y)
+                    return [geo.kick_to(inspector, me, inspector.get_ball(),
+                                        tgt_pc, BALL_MAX_SPEED)]
+
             # P2 (kickoff_play): saída ENSAIADA do reinício — tabela p/ o #9
             # em corrida → toque pro espaço → cascata normal. off = v3.
             ko = setplays.hold_orders(self, inspector, me, opponents)
@@ -2005,6 +2020,12 @@ class MyBot(lugo4py.Bot, ABC):
                 continue
             target = lead_target(mate, t_ball)
             if safe_mode:
+                # C4b (cena l3_v5_250): passe quase PARALELO à linha para um
+                # mate muito abaixo/acima raspa a boca e vira gol contra (a
+                # soma de velocidade desloca o vetor). Exigir avanço mínimo.
+                fwd_sign = 1.0 if goal_center.x > me.position.x else -1.0
+                if fwd_sign * (target.x - me.position.x) < 800.0:
+                    continue
                 # C4: corrida no destino (padrão pass_endpoint_race) + veto por
                 # fronteiras de turno com origem na bola — o veto v2 (estático,
                 # cego a <700d) deixava a saída do goleiro ser interceptada.
