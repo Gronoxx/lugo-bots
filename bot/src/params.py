@@ -503,6 +503,14 @@ STRUCTURE_DEFAULTS = {
     # dos 62% do BotAdversario10 e do nosso g1 da v6. Sinergia: swarm_rebound no
     # arco + far_post_run no poste 2. off = v6 (carry normal).
     "quina_entry": "off",                  # | on
+    # v7/CENAS (press_shadow — solução 1 do usuário, 0×1 v6×BotAdversario1): o chaser
+    # aproxima pela SOMBRA do passe nas costas (linha portador->receptor mais
+    # fundo) e so ataca a bola colado — fecha a linha ENQUANTO pressiona.
+    "press_shadow": "off",                 # | on
+    # v7/CENAS (press_hold_mark — solução 2, versao SUBSTITUICAO): eleito que
+    # marca atacante fundo e trocado pelo proximo do rank (mesmo nº de
+    # pressers; remocao pura violaria a lei da passividade).
+    "press_hold_mark": "off",              # | on
     # CB_STAGGER (v6, gol de ouro BotAdversario1 17/08): com a bola funda no nosso
     # terco, tac.chasers elege os 2 mais proximos = frequentemente OS DOIS
     # zagueiros centrais -> corredor central vazio -> passe milimetrico acha o
