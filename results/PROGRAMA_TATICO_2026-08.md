@@ -117,6 +117,30 @@ docker push repo.lugobots.ai/killua-zoldyck:v6   # marcar main na plataforma
 4. **REVERTER main p/ v4** (re-marcar :v4) → só promover v6 se os DOIS exames ≥ v4. Depois `cp bot/genome_v4_candidate.json bot/genome_submit.json` para o repo refletir a main.
 **Bancada-patrick** (quota própria): `docker push repo.lugobots.ai/patrick-estrela:v2bench` (v3+gk_track pronto) → 1× BotAdversario1 = evidência do antídoto ao canto-longe.
 
+**BISSEÇÃO DA 6ª LEI + v7.3/v7.4 (18/08).** Blocos isolados vs level-1 (32 jogos rush cada,
+base=v6): **kickoff-pack** (race+play+blitz+ring) **✓ +29% finalizações** (4,31→5,56), gf
+1,81→2,00; **gk-pack+ot** (gk_clear=safe+gk_collect+ot_press) **✓** gf 2,31→2,81; **BotAdversario1-pack**
+(cpw+shield+opd) **✓ +34% finalizações**, gf 1,62→2,50; **swarm+quina ✗** (−24% fin — quina
+descartada, swarm solo era +25%); **dd+holdmark ✗** (−26% fin, passes +40% = posse estéril:
+a assinatura da inanição). v7.3 (dd_maxfrac=0,33) melhorou mas não curou: C1 ✓ (32E, sem
+desastre), C2 gf 0,12→0,19 mas ga 0,50→0,75 e fin −42%; C3 gf 2,12→1,81, fin 5,31→4,44,
+passes +29% (estéril). **Diagnóstico final: o dreno é o RECUO em meio-campo, não o pacote-cenas
+em si.** Busca do pacote-cenas mínimo (4 variantes × 130 runs): só-positivos 126/130, +holdmark
+126, +dd(0,33) 129, ambos **130**; e o recuo mantém 130/130 com gatilho apertado a 0,22/0,25/0,28
+— ou seja, **basta recuar nos 22% mais fundos** (ameaça real; não é passividade).
+**v7.4-candidata = v6 + kickoff-pack + swarm + BotAdversario1-pack + gk-pack + ot + dd(0,22) + holdmark**
+(`bot/genome_v74_candidate.json`, 26 genes): cenas **130/130**; travas C3/C2 em curso.
+
+**TRAVAS DA v7.2-COMPLETA (18/08): C1 OK (31E/1D, sem desastre) mas C2/C3 REPROVARAM —
+6ª LEI DA PASSIVIDADE, forma nova: A COMPOSIÇÃO.** Cada gene passou solo; os 26 juntos
+drenaram o corpo ofensivo: C2 sparring gf 0,38→0,06 (chutes 7,06→3,25, opp_danger 637→835,
+contra-ataques 0→5); C3 wait-L1 gf 1,81→0,94 (fin 4,88→2,38, posse estéril 184→247 passes;
+ga 0,12→0,06 perfeito — inanição clássica). Kickoff-pack segue funcionando (ko 100%, rebote
+aproveitado 78%). **Bisseção em curso** (3 blocos vs L1 rush): B1=ofensivos (race/play/blitz/
+ring/swarm/quina/ot/gksafe), B2=dd+holdmark (núcleo-cenas), B3=cpw+shield+opd. Tensão a
+resolver: o pacote-cenas (130/130 nos 13 gols) usa exatamente dd+holdmark — se forem os drenos,
+calibrar versão situacional (recuo só no terço, não no campo) em vez de descartar.
+
 **SCREENING v7 — CONSOLIDAÇÃO (18/08 madrugada, 32 jogos rush/bloco):**
 S2 kickoff-pack (race+play+blitz+ring) **APROVADO no mecanismo**: corrida do reinício 50%→
 **100%** (ko_lost 14→0, 1º toque 12t), opp_danger 698→618, sofridos 8→7 (vs sparring o kickoff
