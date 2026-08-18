@@ -56,7 +56,7 @@ class State:
 
     __slots__ = ("turn", "pos", "vel", "ball_pos", "ball_vel", "holder",
                  "score", "shot_clock_side", "shot_clock", "jump_left",
-                 "turns_ball_in_goal_zone")
+                 "turns_ball_in_goal_zone", "kick_cd")
 
     def __init__(self):
         self.turn = 0
@@ -71,6 +71,10 @@ class State:
         self.shot_clock = SHOT_CLOCK_TIME
         self.jump_left = np.zeros((2, 11), dtype=np.int32)
         self.turns_ball_in_goal_zone = 0
+        # cooldown de RECAPTURA pós-chute (por jogador): sem isto o GK
+        # (alcance 560 > deslocamento do chute num turno) re-pega a própria
+        # saída em loop infinito — clearances reais saem no servidor.
+        self.kick_cd = np.zeros((2, 11), dtype=np.int32)
 
     def copy(self):
         s = State()
@@ -85,6 +89,7 @@ class State:
         s.shot_clock = self.shot_clock
         s.jump_left = self.jump_left.copy()
         s.turns_ball_in_goal_zone = self.turns_ball_in_goal_zone
+        s.kick_cd = self.kick_cd.copy()
         return s
 
 
@@ -126,6 +131,7 @@ def step(s: State, orders_home, orders_away) -> State:
     """
     s = s.copy()
     s.turn += 1
+    np.maximum(s.kick_cd - 1, 0, out=s.kick_cd)
 
     # 1) se a bola está solta, sua velocidade é processada primeiro
     if s.holder is None:
@@ -273,6 +279,10 @@ def _glue_ball(s: State):
         dx, dy = dx / n, dy / n
     s.ball_pos[0] = s.pos[side, i, 0] + dx * BALL_HOLD_OFFSET
     s.ball_pos[1] = s.pos[side, i, 1] + dy * BALL_HOLD_OFFSET
+    # bola PRESA nunca atravessa linha (sem isto o GK na linha, ao voltar com
+    # vel de componente -x, "gruda" a bola atrás da linha => auto-gol falso)
+    s.ball_pos[0] = min(max(s.ball_pos[0], 10.0), MAX_X - 10.0)
+    s.ball_pos[1] = min(max(s.ball_pos[1], 10.0), MAX_Y - 10.0)
     s.ball_vel[:] = s.vel[side, i]
 
 
@@ -281,6 +291,8 @@ def _try_catch(s: State, side, i):
     eu estiver MAIS PERTO da bola que o dono atual (regra física, independente
     da ordem de processamento — reduz o viés HOME-antes-de-AWAY). Não tomo de um
     companheiro. Medido: roubos ocorrem (mediana 224d 1 turno antes)."""
+    if s.kick_cd[side, i] > 0:
+        return                        # acabou de chutar: não re-pega a saída
     d = math.hypot(s.ball_pos[0] - s.pos[side, i, 0],
                    s.ball_pos[1] - s.pos[side, i, 1])
     radius = GK_CATCH_RADIUS if i == 0 else TOUCH_RADIUS
@@ -316,6 +328,7 @@ def _apply_kick(s: State, side, i, k):
     # o chute SOMA à velocidade atual da bola
     s.ball_vel = _clip_speed(s.ball_vel + kv, BALL_MAX_SPEED)
     s.holder = None
+    s.kick_cd[side, i] = 4
     # "The ball kick is processed immediately after the order (the ball
     # position is updated as its new velocity after the kick)" — sem isto a
     # bola fica parada sob o chutador e o time processado depois consegue
