@@ -98,10 +98,11 @@ docker push repo.lugobots.ai/killua-zoldyck:v4   # e marcar como main release
 | **v4k** | v4 + shot_gate=slack + gs_retain_late + gs_draw_ok (`bot/genome_v4k_knockout.json`) | **Mata-mata** vs muralha/GK-forte (inanição + empate-serve) | selfplay vs v4 −0,12 (sem desastre); vs sparring: chance 0,44→**0,83**, slack>0 77%, gf 0→0,62 |
 | v3 | (tag :v3 na plataforma) | rollback | — |
 | kickoff pack (kick9+playbook) + sym | genes prontos | carta vs iguais (converte reinícios ganhos: terço 0→38%) | não entra na main até evidência de plataforma |
-| **v6 (candidata, 17/08 — TRAVAS LOCAIS OK, aguarda EXAME)** | v4 + shot_gate=**hybrid** + **gk_reach_speed=100** + ot_relief 260 (`bot/genome_v6.json`) | **arma anti-GK-elite** (L3/BotAdversario1/mata-mata) | hybrid = threshold perto (d≤3200) + slack-100 longe (100 = cap físico do GK; retro: nega 53/74 longes estéreis). **C1 selfplay n=32: 0V/32E/0D, saldo 0,00 (sem desastre). C2 sparring: good_chance 0,384→0,866, conv. 2,4→3,1%, doação de longe 59%→23%, opp_danger −19% (ga 0,31→0,56 n.s., ~1σ). C3 wait vs L1: 1,25×0,19, 10V/6E/0D, conversão mantida 30%** — MAS gf cai de 2,38 (−1,13, z≈3): os 14 gols-de-longe da v4 vs GK fraco somem. **⇒ v6 NÃO é versão única de seeding: 6/16 empates vs L1 = 3,5 pts esperados vs ~5,0 da v4 (E vale 1, V vale 5).** Papel: main vs L2/L3/BotAdversario1; v4 segue main vs L1 |
+| **v6 (17/08 — TRAVAS OK; EXAME 1/2 PASSOU: 3-0 no level-3)** | v4 + shot_gate=**hybrid** + **gk_reach_speed=100** + ot_relief 260 (`bot/genome_v6.json`; `:v6` push verificado por digest `eaab5b5b16d5...`) | **arma anti-GK-elite** (L3/BotAdversario1/mata-mata) | **EXAME 1 (mid partida-04): 3-0, conversão 42,9% (3/7) vs 2,3% (1/44) da v4; doação ao GK deles 43→4; roubadas 59×0; nosso GK 6/6** — falta o exame 2 (BotAdversario1). hybrid = threshold perto (d≤3200) + slack-100 longe (100 = cap físico do GK; retro: nega 53/74 longes estéreis). **C1 selfplay n=32: 0V/32E/0D, saldo 0,00 (sem desastre). C2 sparring: good_chance 0,384→0,866, conv. 2,4→3,1%, doação de longe 59%→23%, opp_danger −19% (ga 0,31→0,56 n.s., ~1σ). C3 wait vs L1: 1,25×0,19, 10V/6E/0D, conversão mantida 30%** — MAS gf cai de 2,38 (−1,13, z≈3): os 14 gols-de-longe da v4 vs GK fraco somem. **⇒ v6 NÃO é versão única de seeding: 6/16 empates vs L1 = 3,5 pts esperados vs ~5,0 da v4 (E vale 1, V vale 5).** Papel: main vs L2/L3/BotAdversario1; v4 segue main vs L1 |
 | ~~cb_stagger~~ (**REJEITADO S3**, 17/08) | gene fica no repo, off | — | vs sparring: ga 0,42→**1,00**, sofridos on-goal 16,5/jogo, opp_danger +90. **5ª lei da passividade**, forma sutil: o não-zagueiro substituto chega DEPOIS do CB trocado → pressão efetiva mais lenta → mais chute contra. O anti-gol-de-ouro tem que vir de outro mecanismo (ex.: gs_retain_late/gs_draw_ok já protegem o 0-0 no normal; na OT o problema é ofensivo — chutar primeiro via ot_relief) |
+| **v7 (EM CONSTRUÇÃO, 17/08 — genes do METAMORFO implementados, screening RODANDO)** | v6 + genes default-off dos commits c0–c9: `init_variant=race` (kickoff é CORRIDA; race d=1500 ganha de qualquer init ≥1581 — posse em TODO reinício), `kickoff_blitz`, `kickoff_race` (arco na corrida perdida), `swarm_rebound` (arco de rebote pré+pós chute), `ot_press`, `outlet_press_detect`, `counter_press_window` (revisita c/ morte pré-declarada), `kickoff_shield` (idem), `quina_entry` | **fábrica de situações** (fin 7→12+; saldo vs L3 = desempate) + pacote-BotAdversario1 | Commits pequenos, tríade por commit (edge_cases 140 ×combos; decide_dump byte-igual com genes off; latency 1,6ms/50ms com TUDO on). Fix estrutural c0: `setplays.active()` anulava `_reset_turn` no aborto. opd verificado no dump: 31/31 divergências na semântica exata. Sonda v7probe vs L1: registro race 22/22 OK, 1×0. Instrumentação nova no A/B (kickoff/rebote/roubo→fin). Screening S1–S5 em `bench/v7_queue.sh` (~4h) → compor v7-candidata com os aprovados → travas C1/C2/C3 → exame |
 
-**Resultado da quota de 17/08:** v4 × BotAdversario1 **0-0 (+0-1 gol de ouro na OT)**; v4 × level-3 **1-0** (44 chutes/2,3% conversão); v5 × level-3 **0-1** (bug do contador → REPROVADA; usuário reverteu main p/ v4 — nasce a REGRA DO EXAME).
+**Resultado da quota de 17/08:** v4 × BotAdversario1 **0-0 (+0-1 gol de ouro na OT)**; v4 × level-3 **1-0** (44 chutes/2,3% conversão); v5 × level-3 **0-1** (bug do contador → REPROVADA; usuário reverteu main p/ v4 — nasce a REGRA DO EXAME); v6 × level-3 **3-0** (EXAME 1 — autópsia abaixo).
 
 **Próxima quota — EXAME DA v6 (regra nova, nada entra na main sem passar):**
 1. Validação local termina primeiro (`bench/v6_queue.sh`: screenings hybrid/cb_stagger + compósito selfplay/sparring/wait). Se alguma trava reprovar, o exame é adiado e o gene culpado bissectado.
@@ -116,13 +117,88 @@ docker push repo.lugobots.ai/killua-zoldyck:v6   # marcar main na plataforma
 4. **REVERTER main p/ v4** (re-marcar :v4) → só promover v6 se os DOIS exames ≥ v4. Depois `cp bot/genome_v4_candidate.json bot/genome_submit.json` para o repo refletir a main.
 **Bancada-patrick** (quota própria): `docker push repo.lugobots.ai/patrick-estrela:v2bench` (v3+gk_track pronto) → 1× BotAdversario1 = evidência do antídoto ao canto-longe.
 
+**SCREENING v7 — CONSOLIDAÇÃO (18/08 madrugada, 32 jogos rush/bloco):**
+S2 kickoff-pack (race+play+blitz+ring) **APROVADO no mecanismo**: corrida do reinício 50%→
+**100%** (ko_lost 14→0, 1º toque 12t), opp_danger 698→618, sofridos 8→7 (vs sparring o kickoff
+ganho ainda não vira gol — o valor real é vs L3/defesas que recuam). S3 opd+cpw **APROVADO**:
+interceptados/posse z=−1,54 (direção certa), fin/jogo 7,75→8,69, gols pró intactos. S4 shield
+**APROVADO com folga**: sofridos 12→6 (−50%!) sem custo ofensivo (gf 0,19=0,19; chutes 6,69→
+7,56). S5 quina aprovado-fraco (+0,31 gf vs L1, ga igual). S1 swarm vs sparring: mecanismo não
+moveu (banheira pune cerco); S1b vs L1 2× inválido por infra (rede docker; depois tag com
+MAIÚSCULA — compose exige project lowercase; lição de fila) → S1c re-rodando. **v7.2-candidata
+composta** (`bot/genome_v72_candidate.json` = v6 + 13 genes): cenas 130/130 ✓, edge ✓, latency
+2,6ms ✓; travas C1/C2/C3 = `bench/v72_queue.sh`.
+
+**CENAS SIMULADAS (17/08 noite — ESTEIRA NOVA, proposta do usuário): 13 gols sofridos
+reconstruídos dos vídeos e re-simulados com o my_bot real.** Pipeline: `sim/scene_extract.py`
+(visão: campo calibrado ~14d/px, tracking conjunto 22, bola por DP; valida: o passe fatal do
+0×1 passou a d=315 do presser — perdido por 15d no real) + `sim/scene_runner.py` (ghosts com
+trajetória real + bola-fantasma; nossos 11 VIVOS; captura de passe em trânsito = contrafactual)
++ 2 fixes de fidelidade no fastsim expostos pelas cenas (glue atravessando a linha = auto-gol
+falso; GK re-pegando a própria saída em loop). **RESULTADO: v6 baseline 123/130; PACOTE-CENAS
+= `disputing_mode=defend` + `press_hold_mark` + `gk_clear_mode=safe` + `gk_collect` (+ veto
+C4b no clearance) → 130/130 (13/13 na réplica exata + 10 seeds de jitter).** Reprovados nas
+cenas: `panic_clear` (chutão alimenta a muralha), `press_shadow` (neutro aqui; segue candidato
+p/ A/B). Genes novos c10-c11: press_shadow, press_hold_mark, panic_clear (off). Falta: travas
+C1/C2/C3 do pacote-cenas composto com a v7 (lei da passividade: dd+holdmark são defensivos).
+
+**EXAME 2 — AUTÓPSIA (17/08 ~22h, mid `REDACTED`): REPROVOU — v6 0×1 BotAdversario1 no TEMPO NORMAL** (344s, sem OT; pior que o baseline v4 = 0-0+gol de ouro). O gol
+saiu a **19s do fim**: condução do BotAdversario1 no meio sob pressão de 3-4 nossos → passe nas costas
+dos pressers (modo-de-perder nº2) → penetração → ~4s de caos na nossa pequena área → gol.
+Ataque: **1 finalização nossa em 344s** (inanição vs bloco de 9-10; hybrid não solta de longe).
+Roubadas 29×16 e acerto 97,9% (a saída não vazou em volume). **Decisão: reverter main p/ `:v4`
+(v6 não promovida); v6 = arma anti-L3 se a main puder trocar entre desafios (pendência
+suporte).** Lições: (a) a 19s do fim, gs_retain_late+gs_draw_ok (OFF na v6) protegeriam o 0-0;
+(b) plano-OT (ot_press+ot_relief) segue válido — falta CHEGAR à OT; (c) nova esteira anti-BotAdversario1
+= CENAS SIMULADAS (reconstruir os gols sofridos e validar variantes localmente antes da quota).
+
+**EXAME 1 — AUTÓPSIA (17/08 17:58 local, mid `REDACTED`): PASSOU COM FOLGA.**
+v6 × level-3 **3-0** no tempo normal (vídeo 361s, sem OT). Todas as 3 metas batidas:
+
+| métrica | v4×L3 (partida-07) | v6×L3 (partida-04) |
+|---|---|---|
+| placar | 1-0 | **3-0** |
+| finalizações nossas / conversão | 44 / 2,3% | **7 / 42,9%** |
+| doação ao GK deles (defesas) | 43 (97,7%) | **4 (57,1%)** |
+| finalizações deles / nosso GK | 3 / 100% | 6 / **100%** |
+| posse líquida | 22,9% | **35,8%** |
+| passes bons/ruins | 137/9 (93,8%) | **226/7 (97,0%)** |
+| roubadas | 32×2 | **59×0** |
+
+Leitura: o hybrid entregou exatamente o mecanismo desenhado — em vez de 44 chutes doados ao
+GK-elite, segurou/aproximou e finalizou 7× com 3 gols; e NÃO caiu na inanição da v5 (3 chutes,
+0-1). As duas patologias (volume cego e controle estéril) evitadas no mesmo jogo. Custo: doamos
+6 chutes ao L3 (baseline 3), todos defendidos.
+**Anatomia dos gols (forense de vídeo, frames em `scratchpad`):** os TRÊS saíram de finalização
+curta na pequena área, zero bombas de longe — g1 (t≈32s vídeo, 04:35 do 1º tempo, a ~23s de
+jogo!): passe diagonal p/ o espaço, #11 domina na linha de fundo direita e entra com #10 de
+carona, chute à queima-roupa com GK deslocado; g2 (t≈242s, 01:28 do 2º): condução do #11 até a
+quina alta da área, entrada diagonal, #10 finaliza de perto; g3 (t≈280s, 00:56): chute curto
+defendido + **rebote no #10** (second_ball pagando). Mecanismo "deslocar o goleiro" confirmado
+no servidor real — não foi acaso.
+**Calibração da régua (aviso do usuário, 17/08): 3-0 NÃO é dominância.** BotAdversario2 fez **12×2**
+no L3 e **5×0 no BotAdversario1**; BotAdversario1 antigo fazia 6×0/10×0 no L3. Como o desempate do seeding é
+**SALDO vs L3**, margem importa: v6 resolveu conversão (42,9%) mas com 7 finalizações não se
+faz 12 — o gargalo agora é VOLUME×conversão (→ fase metamorfo, `results/METAMORFO_2026-08.md`). **Decisão (árvore do handoff): seguir ao EXAME 2
+(BotAdversario1)** — meta ≥0-0 no normal; na OT estreia o ot_relief (chutar primeiro). Main permanece
+`:v6` até o fim do exame 2; SÓ ENTÃO reverter p/ `:v4` (repo local já está = v4). Quota: exame 1
+foi o 5º jogo killua na janela de 24h (patrick parado desde 16/08 19:21 UTC); se a janela for
+rolante, próximo slot ~19:47–20:09 local de 17/08; se for por dia UTC, há 2 slots hoje.
+
 ## Scouting de adversários (mata-mata)
 
 | bot | ranking | perfil | counter recomendado |
 |---|---|---|---|
-| BotAdversario1 | topo | pressing 4 + campers 9/10 + trio fixo; conversão letal; EVOLUI entre jogos | **v4: 0-0 no tempo normal, 0-1 por GOL DE OURO na prorrogação** (−1:41, #8 de média distância no canto longe — 4º gol dessa anatomia em 2 jogos). Trajetória 0-3→0-3→0-0(+OT). **REGRA NOVA: desafios têm prorrogação/gol de ouro — CONFIRMAR se jogos oficiais de chave também** (muda o valor do gs_draw_ok). Prioridade do matchup: patrick-bench com gk_track (o antídoto do canto-longe) vs BotAdversario1 real |
+| BotAdversario1 | topo | pressing 4 + campers 9/10 + trio fixo; conversão letal; EVOLUI entre jogos | **v4: 0-0 no tempo normal, 0-1 por GOL DE OURO na prorrogação** (−1:41, #8 de média distância no canto longe — 4º gol dessa anatomia em 2 jogos). Trajetória 0-3→0-3→0-0(+OT). **BotAdversario1 NOVO (17/08): anulado 1×1 pelo bloco do BotAdversario12 (2 finalizações em 10 min, SEM gol de ouro na OT inteira); só marca na janela ~15s pós-kickoff; perdeu 5×0 do BotAdversario2. Previsão exame 2: 0×0/1×1 com OT provável (METAMORFO_EIXO_B).** **REGRA NOVA: desafios têm prorrogação/gol de ouro — CONFIRMAR se jogos oficiais de chave também** (muda o valor do gs_draw_ok). Prioridade do matchup: patrick-bench com gk_track (o antídoto do canto-longe) vs BotAdversario1 real |
 | BotAdversario9 (BotAdversario3) | 2º | **FORA DO TORNEIO OFICIAL (confirmado 17/08)** — segue disponível como SPARRING de desafio. MURALHA vertical; vive de devoluções | vira LABORATÓRIO (testar inanição/v4k e wall-breakers por fora); sem urgência de torneio |
-| BotAdversario6 | 4º | POSSE (líq. 68% contra a muralha; 93% passe; 25 roubos) | kickoff pack (ganhar os reinícios) + second_ball; a definir com dados |
+| **BotAdversario2** | forte (novo no radar 17/08) | **GOLEADOR: 12×2 vs L3 (`partida-08`), 5×0 vs BotAdversario1 (`partida-12`), 10×0 L1, 7×0 L2**; evoluiu entre 15/08 (0×0 BotAdversario1) e 17/08 (5×0); variância vs L3 (3×1 hoje 14:32) | **FASE METAMORFO** (results/METAMORFO_2026-08.md): destrinchar o volume×conversão dele e o desmonte do BotAdversario1; absorver via genes pela esteira normal |
+| BotAdversario6 | 4º | POSSE (líq. 68–78%; 500 passes; 4×0 no L3 com só 9 fin) — posse SEM cirurgiões rápidos = volume baixo (EIXO_A) | kickoff pack + second_ball; menos ameaçador do que o ranking sugere |
+| BotAdversario4 | forte | TRANSIÇÃO EM BLOCO: 10×0 no L3 ×2 (27 fin/37%, 42 roubadas); kickoff-press idêntico ao BotAdversario1 antigo (gol aos 8s) | `kickoff_shield` + não subir a linha sem bola |
+| BotAdversario10 | forte | CIRURGIA DE QUINA: 10×0 no L3 (16 fin/**62%**, posse líq. 62%, coluna-de-5 fixa atrás, paciência de shot clock) | fechar quinas/linha de fundo; `counter_launch` pune a subida dos 4 dele |
+| BotAdversario13 | médio-forte | ISCA+BOTE: 10×0/5×0 no L3 com acerto de passe 28% (lançamento nas costas da linha alta; 5 fixos) | NÃO subir a linha contra ele; nosso wait já nega a isca |
+| BotAdversario11 | ? (stats-only) | transição-direta: 6×0 no L3 (15 fin/40%, posse líq. 15,7%) — perfil BotAdversario13-lite | idem BotAdversario13; forense pendente |
+| BotAdversario14 | fraco-médio | ANTI-PADRÃO: 3×0 no L3 com 55 fin/5,5% (52 defesas do GK) — volume-cego, 1–2 corpos no ataque | vitória esperada; punir os 17 chutes que ele doa |
+| BotAdversario12 | fraco no ataque | BUNKER: 1×1 com o BotAdversario1 NOVO (bloco de ~10 + chutão; BotAdversario1: 2 fin em 10 min) | referência tática (negar transição ≫ qualidade geral), não ameaça direta |
 
 ## Ações do usuário (D0)
 1. Confirmar a POLÍTICA DE ATUALIZAÇÃO do bot inscrito durante o torneio (regras/suporte).
