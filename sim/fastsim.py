@@ -244,16 +244,18 @@ def _advance_player(s: State, side, i):
         s.pos[side, i, 0] = 0.0 if side == HOME else float(MAX_X)
         return
     s.pos[side, i, 0] = min(max(s.pos[side, i, 0], 0), MAX_X)
-    # zona do gol adversário é proibida para jogadores de linha (FIEL: medido,
-    # jogadores de linha entram <1400 do gol adversário em 0,0% dos frames)
+    # zona do gol é proibida para jogadores de linha NOS DOIS gols (FIEL:
+    # medido 17/08 em replays reais — dist mínima ao centro de QUALQUER gol,
+    # pelos DOIS times, = 1401; o servidor arqueia no limite).
     if i != 0:
-        goal_x = MAX_X if side == HOME else 0
-        d = math.hypot(s.pos[side, i, 0] - goal_x,
-                       s.pos[side, i, 1] - MAX_Y / 2)
-        if d < GOAL_ZONE_RANGE:
-            scale = GOAL_ZONE_RANGE / max(d, 1e-6)
-            s.pos[side, i, 0] = goal_x + (s.pos[side, i, 0] - goal_x) * scale
-            s.pos[side, i, 1] = MAX_Y / 2 + (s.pos[side, i, 1] - MAX_Y / 2) * scale
+        for goal_x in (0.0, float(MAX_X)):
+            d = math.hypot(s.pos[side, i, 0] - goal_x,
+                           s.pos[side, i, 1] - MAX_Y / 2)
+            if d < GOAL_ZONE_RANGE:
+                scale = GOAL_ZONE_RANGE / max(d, 1e-6)
+                s.pos[side, i, 0] = goal_x + (s.pos[side, i, 0] - goal_x) * scale
+                s.pos[side, i, 1] = (MAX_Y / 2
+                                     + (s.pos[side, i, 1] - MAX_Y / 2) * scale)
 
 
 def _glue_ball(s: State):
@@ -363,18 +365,19 @@ def _update_shot_clock(s: State):
 
 
 def _update_goal_zone(s: State):
-    if s.holder is not None:
-        s.turns_ball_in_goal_zone = 0
-        return
+    # FIEL (medido 17/08, 243 amostras em replays reais): o relógio da BOLA
+    # usa a FAIXA |x - linha do gol| <= 1400 (qualquer y), NÃO o disco; e
+    # conta MESMO com a bola em posse de um jogador de linha (39 máx
+    # observado com holder). Estourar = ejeção ao centro a ~390 (posse some).
     x, y = s.ball_pos
-    in_zone = (math.hypot(x, y - MAX_Y / 2) < GOAL_ZONE_RANGE or
-               math.hypot(x - MAX_X, y - MAX_Y / 2) < GOAL_ZONE_RANGE)
+    in_zone = (x <= GOAL_ZONE_RANGE) or (x >= MAX_X - GOAL_ZONE_RANGE)
     if in_zone:
         s.turns_ball_in_goal_zone += 1
         if s.turns_ball_in_goal_zone >= BALL_TIME_IN_GOAL_ZONE:
             direction = np.array([MAX_X / 2 - x, MAX_Y / 2 - y])
             n = math.hypot(direction[0], direction[1]) or 1.0
             s.ball_vel = direction / n * BALL_MAX_SPEED
+            s.holder = None
             s.turns_ball_in_goal_zone = 0
     else:
         s.turns_ball_in_goal_zone = 0
