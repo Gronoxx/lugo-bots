@@ -23,5 +23,6 @@
  "disputing_mode": "defend",
  "press_hold_mark": "on",
  "gk_clear_mode": "safe",
- "gk_collect": "on"
+ "gk_collect": "on",
+ "swarm_rebound": "on"
 }
