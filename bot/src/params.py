@@ -252,6 +252,12 @@ DEFAULTS = {
     # v7.3 (dd_maxfrac): teto de avanco da bola p/ o recuo do
     # disputing_mode=defend (0.5 = historico; 0.33 = so bola funda).
     "dd_maxfrac": 0.5,
+    # v7.5/MARGEM (shot_rebound_relief): alivio do gate de chute por CORPO
+    # nosso no arco de rebote (raio srr_radius do gol deles). Encoda a
+    # economia do cerco: com rebatedores posicionados, o chute defendido vira
+    # segunda bola. 0 = inerte (=v6).
+    "srr_per_body": 0.0,
+    "srr_radius": 2600.0,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -674,6 +680,8 @@ BOUNDS = {
     "pc_press_radius": (800.0, 3000.0),
     "pc_opps": (1.0, 4.0),
     "dd_maxfrac": (0.2, 0.6),
+    "srr_per_body": (0.0, 800.0),
+    "srr_radius": (1500.0, 4000.0),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),

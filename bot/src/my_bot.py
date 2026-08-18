@@ -1079,6 +1079,24 @@ class MyBot(lugo4py.Bot, ABC):
             except Exception:
                 pass
 
+        # v7.5/MARGEM (shot_rebound_relief): a ECONOMIA do chute muda quando
+        # há corpos nossos no arco de rebote. Sem estrutura, chute defendido =
+        # bola entregue (por isso a v6 fechou o gate). Com 2-3 atacantes no
+        # arco (swarm_rebound), a defesa do GK vira SEGUNDA BOLA nossa — é
+        # assim que o BotAdversario2 fez 51 finalizações de ~12 posses (12×2 no L3).
+        # Alivia o gate srr_per_body por corpo no raio srr_radius do gol
+        # deles. 0.0 = inerte (=v6). Vale nos ramos threshold E slack.
+        if P["srr_per_body"] > 0.0:
+            try:
+                gcen = goal.get_center()
+                bodies = sum(
+                    1 for p in inspector.get_my_team_players()
+                    if p.number in tac.FORWARDS and p.number != me.number
+                    and dist(p.position, gcen) <= P["srr_radius"])
+                gap_relief += P["srr_per_body"] * bodies
+            except Exception:
+                pass
+
         # GATE ADAPTATIVO (shot_gate_adaptive): goleiro-elite detectado EM-JOGO
         # (muitos chutes nossos, quase nenhum gol) => aperta threshold->slack.
         # Motivo: no dia das chaves UMA versao joga L1+L2+L3, e o gate certo
