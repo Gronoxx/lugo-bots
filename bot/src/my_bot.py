@@ -1381,11 +1381,39 @@ class MyBot(lugo4py.Bot, ABC):
                 if turns_for_ball(kick_speed, d) == math.inf:
                     continue      # a bola executada nem alcança o alvo
 
+            # v11/FORENSE (risk_pass_shooter): RISCO ACEITO PARA ARMAR O CHUTE.
+            # Medido em 3.845 oportunidades: quando um companheiro está em
+            # alcance COM LINHA LIMPA ao gol, o passe até ele é vetado em
+            # 80,3% dos casos e só 1,7% passa. É por isso que temos 99% de
+            # acerto de passe (o melhor da competição) e o pior volume de
+            # finalização — o bot só tenta o que tem certeza.
+            # A economia justifica o risco: perder a bola no campo deles é
+            # quase grátis (recuperamos 96% em ≤3s), e o BotAdversario6/BotAdversario13
+            # goleiam com 88%/28% de acerto. Para ESSE receptor específico
+            # (atirador com janela, no campo de ataque), os vetos são
+            # dispensados. off = v10.
+            atirador = False
+            if (P.get("risk_pass_shooter") == "on"
+                    and tac.ball_advance_frac(me.position, side)
+                    >= P["rps_minfrac"]):
+                d_goal_t = dist(target, goal_center)
+                if 1600.0 < d_goal_t <= P["dangerous_shot_range"]:
+                    m_rs = P["shot_post_margin"]
+                    outros_rs = [o for o in opponents
+                                 if o.number != tac.GOALKEEPER]
+                    for ty in (GOAL_MIN_Y + m_rs, MAX_Y / 2.0,
+                               GOAL_MAX_Y - m_rs):
+                        if not can_be_intercepted(
+                                target, point(goal_center.x, ty), outros_rs,
+                                BALL_MAX_SPEED, USE_VELOCITY):
+                            atirador = True
+                            break
+
             # Fase A — reforço cirúrgico #2 (C3): corrida no destino. A linha pode
             # estar limpa em trânsito e a recepção ser disputada. Descarta se um
             # adversário chega ao ponto de recepção antes do receptor (+margem).
             # Mesmo padrão de _touch_target. off = v9.
-            if P.get("pass_endpoint_race") == "on":
+            if P.get("pass_endpoint_race") == "on" and not atirador:
                 t_recv = turns_for_player(dist(mate.position, target))
                 if any(turns_for_player(dist(o.position, target))
                        <= t_recv + P["pass_endpoint_margin"] for o in opponents):
@@ -1394,7 +1422,9 @@ class MyBot(lugo4py.Bot, ABC):
             # veto de interceptação (velocity-aware se ligado). Uma varredura só:
             # quando pass_w_intercept>0 reusa intercept_risk p/ veto E score.
             r = None
-            if P["pass_w_intercept"] > 0.0:
+            if atirador:
+                pass                      # v11: risco aceito para armar o chute
+            elif P["pass_w_intercept"] > 0.0:
                 r = intercept_risk(me.position, target, opponents, kick_speed, USE_VELOCITY)
                 if r <= 0.0:
                     continue

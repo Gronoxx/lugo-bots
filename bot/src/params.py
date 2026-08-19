@@ -274,6 +274,9 @@ DEFAULTS = {
     # ja esta em alcance de chute COM LINHA LIMPA ao gol. Multiplica o ciclo
     # do cerco sem depender de o portador achar a janela sozinho.
     "pass_w_shooter": 0.0,
+    # v11/FORENSE (risk_pass_shooter): fracao minima de avanco do PORTADOR
+    # para dispensar os vetos no passe ao atirador com janela.
+    "rps_minfrac": 0.5,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -543,6 +546,11 @@ STRUCTURE_DEFAULTS = {
     # v11/FORENSE (lane_seek): procurar a JANELA DE CHUTE (linha limpa) em vez
     # de conduzir ao acaso quando o chute é vetado por bloqueio.
     "lane_seek": "off",                    # | on
+    # v11/FORENSE (risk_pass_shooter): dispensa os vetos de passe quando o
+    # receptor e' um ATIRADOR COM JANELA no campo de ataque. Medido: 80,3%
+    # desses passes sao vetados hoje — e a perda ali custa quase nada (96% de
+    # recuperacao em <=3s).
+    "risk_pass_shooter": "off",            # | on
     # v7/CENAS (press_hold_mark — solução 2, versao SUBSTITUICAO): eleito que
     # marca atacante fundo e trocado pelo proximo do rank (mesmo nº de
     # pressers; remocao pura violaria a lei da passividade).
@@ -708,6 +716,7 @@ BOUNDS = {
     "ls_w_press": (0.0, 2000.0),
     "ls_extra_range": (0.0, 3000.0),
     "pass_w_shooter": (0.0, 6000.0),
+    "rps_minfrac": (0.3, 0.8),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
@@ -787,6 +796,7 @@ STRUCTURE_OPTIONS = {
     "press_hold_mark": ["off", "on"],
     "panic_clear": ["off", "on"],
     "lane_seek": ["off", "on"],
+    "risk_pass_shooter": ["off", "on"],
 }
 
 
