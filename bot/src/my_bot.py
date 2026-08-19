@@ -1464,6 +1464,27 @@ class MyBot(lugo4py.Bot, ABC):
             if opd_on and P["opd_w_flank"] > 0.0:
                 flank_bonus = P["opd_w_flank"] * abs(target.y - MAX_Y / 2.0)
 
+            # v11/FORENSE (pass_w_shooter): PASSAR PARA QUEM PODE CHUTAR.
+            # Autópsia do portão: só 3,2% dos turnos em alcance viram chute e
+            # 80% dos vetos são LINHA BLOQUEADA (a folga do goleiro nunca é o
+            # motivo). Em vez de o portador caçar a janela sozinho
+            # (lane_seek), premiar o receptor que JÁ está numa: em alcance e
+            # com linha limpa ao gol. 0 = inerte (=v10).
+            shooter_bonus = 0.0
+            if P["pass_w_shooter"] > 0.0:
+                d_goal_t = dist(target, goal_center)
+                if 1600.0 < d_goal_t <= P["dangerous_shot_range"]:
+                    m_sb = P["shot_post_margin"]
+                    outros = [o for o in opponents
+                              if o.number != tac.GOALKEEPER]
+                    for ty in (GOAL_MIN_Y + m_sb, MAX_Y / 2.0,
+                               GOAL_MAX_Y - m_sb):
+                        if not can_be_intercepted(
+                                target, point(goal_center.x, ty), outros,
+                                BALL_MAX_SPEED, USE_VELOCITY):
+                            shooter_bonus = P["pass_w_shooter"]
+                            break
+
             # v7.5/MARGEM (pass_w_advance): peso do AVANÇO no score do passe.
             # 1.0 = v9 (inerte). Diagnóstico do 1×0 oficial vs level-1: 218
             # passes certos para 2 finalizações, posse quase toda no nosso
@@ -1478,7 +1499,8 @@ class MyBot(lugo4py.Bot, ABC):
                                                   - P["pass_mark_threshold"])
                      + safety
                      + recv_bonus
-                     + flank_bonus)
+                     + flank_bonus
+                     + shooter_bonus)
 
             # candidato de RETENÇÃO: passe seguro que perde menos avanço, recuo
             # LIMITADO por pass_retain_backmax. Habilitado por pass_retain="on" OU

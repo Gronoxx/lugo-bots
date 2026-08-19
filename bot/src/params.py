@@ -270,6 +270,10 @@ DEFAULTS = {
     "ls_w_goal": 0.35,
     "ls_w_press": 400.0,
     "ls_extra_range": 1500.0,
+    # v11/FORENSE (pass_w_shooter): bonus no score do passe quando o RECEPTOR
+    # ja esta em alcance de chute COM LINHA LIMPA ao gol. Multiplica o ciclo
+    # do cerco sem depender de o portador achar a janela sozinho.
+    "pass_w_shooter": 0.0,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -703,6 +707,7 @@ BOUNDS = {
     "ls_w_goal": (0.0, 2.0),
     "ls_w_press": (0.0, 2000.0),
     "ls_extra_range": (0.0, 3000.0),
+    "pass_w_shooter": (0.0, 6000.0),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
