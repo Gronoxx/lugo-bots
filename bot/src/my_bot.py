@@ -503,6 +503,16 @@ class MyBot(lugo4py.Bot, ABC):
             if pass_order is not None:
                 return [pass_order]
 
+            # v11/FORENSE (lane_seek): sem chute nem passe, ir para a JANELA de
+            # chute mais próxima (linha limpa até o gol) em vez de conduzir ao
+            # acaso. Autópsia do portão (14.892 turnos): em alcance, a linha
+            # está BLOQUEADA em 80% dos turnos; a folga do goleiro nunca é o
+            # motivo (0,0%). off = v10.
+            if P.get("lane_seek") == "on":
+                lt = self._lane_target(inspector, goal_center, opponents)
+                if lt is not None and dist(me.position, lt) > 200.0:
+                    return [safe_move(inspector, me, lt)]
+
             # v7/METAMORFO (quina_entry): sem chute nem passe, atacar a quina/
             # linha de fundo (desloca o GK ao poste; o chute é reavaliado no
             # topo da cascata a cada turno). off = v6.
@@ -1533,6 +1543,60 @@ class MyBot(lugo4py.Bot, ABC):
                      - 0.15 * dist(me.position, cand))
             if score > best_score:
                 best_score, best = score, cand
+        return best
+
+    def _lane_target(self, inspector, goal_center, opponents):
+        """v11/FORENSE (lane_seek): PROCURAR A JANELA DE CHUTE.
+
+        Autópsia do portão (14.892 turnos com a bola nos pés): quando estamos
+        em alcance, a linha até o gol está BLOQUEADA em 80% dos turnos — e a
+        folga do goleiro NUNCA é o motivo (0,0%). É o mecanismo do BotAdversario6
+        (10×0 no level-2): ele chuta do flanco a ~2400 porque de lá a linha ao
+        poste está limpa, não porque finaliza melhor.
+
+        Amostra pontos ao redor do portador e devolve o mais próximo que abre
+        linha livre para algum ponto do gol, preferindo os que aproximam e
+        estão sob menos pressão. None = nenhuma janela (segue o fluxo)."""
+        if P.get("lane_seek") != "on":
+            return None
+        me = inspector.get_me()
+        opps = list(opponents)
+        gk = inspector.get_opponent_goalkeeper()
+        others = [o for o in opps if gk is None or o.number != gk.number]
+        if dist(me.position, goal_center) > (P["dangerous_shot_range"]
+                                             + P["ls_extra_range"]):
+            return None
+        m = P["shot_post_margin"]
+        tys = (GOAL_MIN_Y + m, MAX_Y / 2.0, GOAL_MAX_Y - m)
+        best, best_score = None, -1e18
+        R = P["ls_radius"]
+        ndirs = max(1, int(round(P["ls_dirs"])))
+        for k in range(ndirs):
+            ang = 2.0 * math.pi * k / ndirs
+            for mult in (0.5, 1.0):
+                cx = me.position.x + math.cos(ang) * R * mult
+                cy = me.position.y + math.sin(ang) * R * mult
+                if not (300.0 <= cx <= MAX_X - 300.0
+                        and 300.0 <= cy <= MAX_Y - 300.0):
+                    continue
+                cand = point(cx, cy)
+                d_cand = dist(cand, goal_center)
+                if d_cand > P["dangerous_shot_range"] or d_cand < 1600.0:
+                    continue                      # fora de alcance / zona 1400
+                aberto = False
+                for ty in tys:
+                    if not can_be_intercepted(cand, point(goal_center.x, ty),
+                                              others, BALL_MAX_SPEED,
+                                              USE_VELOCITY):
+                        aberto = True
+                        break
+                if not aberto:
+                    continue
+                score = (-dist(me.position, cand)
+                         - P["ls_w_goal"] * d_cand
+                         - P["ls_w_press"] * self._pressure_on(cand, opps))
+                if score > best_score:
+                    best_score, best = score, cand
         return best
 
     def _angle_target(self, inspector, goal_center):

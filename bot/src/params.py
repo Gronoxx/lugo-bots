@@ -261,6 +261,15 @@ DEFAULTS = {
     # v7.5/MARGEM (pass_w_advance): multiplicador do AVANÇO no score do passe.
     # 1.0 = v9 (inerte). >1 empurra a bola p/ frente em vez de reciclar.
     "pass_w_advance": 1.0,
+    # v11/FORENSE (lane_seek): busca da JANELA DE CHUTE (linha limpa ao gol).
+    # Autópsia: em alcance, a linha está bloqueada em 80% dos turnos e a folga
+    # do goleiro NUNCA é o motivo. ls_dirs direcoes x 2 raios ao redor do
+    # portador; escolhe a janela mais proxima, preferindo perto do gol.
+    "ls_radius": 1200.0,
+    "ls_dirs": 8.0,
+    "ls_w_goal": 0.35,
+    "ls_w_press": 400.0,
+    "ls_extra_range": 1500.0,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -527,6 +536,9 @@ STRUCTURE_DEFAULTS = {
     # v7/CENAS (panic_clear): holder de LINHA na zona vermelha sob cerco =>
     # chutao imediato ao corredor (clear de emergencia; o GK ja tinha o dele).
     "panic_clear": "off",                  # | on
+    # v11/FORENSE (lane_seek): procurar a JANELA DE CHUTE (linha limpa) em vez
+    # de conduzir ao acaso quando o chute é vetado por bloqueio.
+    "lane_seek": "off",                    # | on
     # v7/CENAS (press_hold_mark — solução 2, versao SUBSTITUICAO): eleito que
     # marca atacante fundo e trocado pelo proximo do rank (mesmo nº de
     # pressers; remocao pura violaria a lei da passividade).
@@ -686,6 +698,11 @@ BOUNDS = {
     "srr_per_body": (0.0, 800.0),
     "srr_radius": (1500.0, 4000.0),
     "pass_w_advance": (0.5, 4.0),
+    "ls_radius": (400.0, 2500.0),
+    "ls_dirs": (4.0, 16.0),
+    "ls_w_goal": (0.0, 2.0),
+    "ls_w_press": (0.0, 2000.0),
+    "ls_extra_range": (0.0, 3000.0),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
@@ -764,6 +781,7 @@ STRUCTURE_OPTIONS = {
     "press_shadow": ["off", "on"],
     "press_hold_mark": ["off", "on"],
     "panic_clear": ["off", "on"],
+    "lane_seek": ["off", "on"],
 }
 
 
