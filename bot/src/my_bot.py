@@ -733,7 +733,8 @@ class MyBot(lugo4py.Bot, ABC):
                 self.number, ball.position, side,
                 aggression=aggr_sup,
                 attacking=(tac.ball_advance_frac(ball.position, side)
-                           >= P["attack_width_minfrac"]))
+                           >= P["attack_width_minfrac"]),
+                camping=True)      # v11 (high_camp): temos a bola ⇒ acampar
 
             # corrida ao 2º poste (far_post_run) tem prioridade quando ligada e a
             # jogada está madura. Default off.

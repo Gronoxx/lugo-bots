@@ -277,6 +277,11 @@ DEFAULTS = {
     # v11/FORENSE (risk_pass_shooter): fracao minima de avanco do PORTADOR
     # para dispensar os vetos no passe ao atirador com janela.
     "rps_minfrac": 0.5,
+    # v11/FORENSE (high_camp): piso de avanco (fracao do campo) dos ATACANTES
+    # e MEIAS quando temos a bola no ataque. Medido: hoje temos 1,0 corpo
+    # (mediana 0) no terco de ataque contra 8-9 do BotAdversario2. 0.70 = x 14000.
+    "hc_floor_fwd": 0.70,
+    "hc_floor_mid": 0.55,
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -551,6 +556,9 @@ STRUCTURE_DEFAULTS = {
     # desses passes sao vetados hoje — e a perda ali custa quase nada (96% de
     # recuperacao em <=3s).
     "risk_pass_shooter": "off",            # | on
+    # v11/FORENSE (high_camp): o "2-8" do BotAdversario2 — atacantes/meias com piso
+    # de avanco INDEPENDENTE da bola enquanto atacamos.
+    "high_camp": "off",                    # | on
     # v7/CENAS (press_hold_mark — solução 2, versao SUBSTITUICAO): eleito que
     # marca atacante fundo e trocado pelo proximo do rank (mesmo nº de
     # pressers; remocao pura violaria a lei da passividade).
@@ -717,6 +725,8 @@ BOUNDS = {
     "ls_extra_range": (0.0, 3000.0),
     "pass_w_shooter": (0.0, 6000.0),
     "rps_minfrac": (0.3, 0.8),
+    "hc_floor_fwd": (0.5, 0.9),
+    "hc_floor_mid": (0.35, 0.8),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
@@ -797,6 +807,7 @@ STRUCTURE_OPTIONS = {
     "panic_clear": ["off", "on"],
     "lane_seek": ["off", "on"],
     "risk_pass_shooter": ["off", "on"],
+    "high_camp": ["off", "on"],
 }
 
 

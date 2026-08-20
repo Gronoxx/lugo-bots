@@ -58,7 +58,7 @@ def ball_advance_frac(ball_pos, side) -> float:
 
 
 def formation_position(number: int, ball_pos, side, aggression: float = 0.0,
-                       attacking: bool = False):
+                       attacking: bool = False, camping: bool = False):
     """Posição que este jogador deve ocupar, dada a posição da bola.
 
     A formação desliza com a bola: avança quando atacamos, recua quando
@@ -77,6 +77,20 @@ def formation_position(number: int, ball_pos, side, aggression: float = 0.0,
     # deslocamento longitudinal: a linha acompanha a bola
     x_frac = bx + SHIFT_X * (adv - 0.5) + 0.10 * aggression
     x_frac = max(0.02, min(0.92, x_frac))
+
+    # v11/FORENSE (high_camp): PISO DE ACAMPAMENTO. Medido com a bola nossa:
+    # temos 1,0 corpo (mediana ZERO) no terço de ataque, contra os 8-9 que o
+    # BotAdversario2 mantém — porque a formação é centrada na BOLA e o coeficiente de
+    # agressividade só desloca 0,10 da largura do campo. Com o gene, ATACANTES
+    # (e opcionalmente meias) têm um piso de avanço INDEPENDENTE de onde a
+    # bola está: é o "2-8" do BotAdversario2. Só age quando `attacking` (temos a
+    # bola no ataque). off = byte-idêntico.
+    if camping and P.get("high_camp") == "on":
+        if number in FORWARDS:
+            x_frac = max(x_frac, P["hc_floor_fwd"])
+        elif number in MIDFIELDERS:
+            x_frac = max(x_frac, P["hc_floor_mid"])
+        x_frac = min(0.92, x_frac)
 
     # deslocamento lateral: comprime na direção da bola sem abandonar o lado
     y_shift = SHIFT_Y
