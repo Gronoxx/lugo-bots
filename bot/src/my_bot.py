@@ -1448,14 +1448,20 @@ class MyBot(lugo4py.Bot, ABC):
             # conducao (marcado) NAO e' destino terminal — so como rele (planejador)
             # ou p/ abrir angulo. require_unmarked_fwd (usado pelo Caso): exige
             # receptor DESMARCADO e mais perto do gol. off = v9 (nenhum gate).
-            if require_unmarked_fwd:
+            # v11: o ATIRADOR COM JANELA é destino TERMINAL por definição (ele
+            # vai chutar, não conduzir) — exigir que esteja desmarcado o
+            # descarta justamente na área, onde sempre há marcador. Era esta
+            # interação com hold_logic="caso" que anulava o risk_pass_shooter:
+            # o gene disparava em 16,3% dos turnos e o gate de marcação
+            # derrubava o candidato logo em seguida.
+            if require_unmarked_fwd and not atirador:
                 if advance <= 0.0:
                     continue
                 rf = carry.dribble_freedom(mate.position, opponents,
                                            inspector.get_opponent_goalkeeper(), goal_center)
                 if rf["cls"] in ("preso", "restrito"):
                     continue
-            elif P.get("pass_recv_gate") == "on":
+            elif P.get("pass_recv_gate") == "on" and not atirador:
                 rf = carry.dribble_freedom(mate.position, opponents,
                                            inspector.get_opponent_goalkeeper(), goal_center)
                 if rf["cls"] == "preso":
