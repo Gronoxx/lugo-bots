@@ -745,26 +745,54 @@ class MyBot(lugo4py.Bot, ABC):
                                             safe_move(inspector, me, fp))
 
             if holder is None:
-                return self._sup_orders(inspector,
-                                        safe_move(inspector, me, base))
+                return self._sup_orders(
+                    inspector, safe_move(inspector, me,
+                                         self._camp_clamp(base, side)))
 
             # apoio ATIVO (support_mode="offer"): recebedores sobem oferecendo
             # linha de passe segura; default "v9" = oferta em anel (idêntico).
             if P.get("support_mode") == "offer":
                 tgt = self._support_offer_run(inspector, holder, side, base)
-                return self._sup_orders(inspector,
-                                        safe_move(inspector, me, tgt))
+                return self._sup_orders(
+                    inspector, safe_move(inspector, me,
+                                         self._camp_clamp(tgt, side)))
 
             # v9 (default): se perto do portador, abrir linha de passe em vez de colar
             if dist(me.position, holder.position) < P["support_near_holder"]:
                 base = self._support_offer(inspector, holder, base)
 
-            return self._sup_orders(inspector, safe_move(inspector, me, base))
+            return self._sup_orders(
+                inspector, safe_move(inspector, me,
+                                     self._camp_clamp(base, side)))
 
         except Exception as e:
             print(f'on_supporting: {e}')
             traceback.print_exc()
             return []
+
+    def _camp_clamp(self, target, side):
+        """v11 (high_camp): garante o PISO DE ACAMPAMENTO no alvo FINAL do
+        apoiador. Sem isto o piso da formação era anulado pelo
+        `_support_offer` (busca local ao redor do jogador, que ignora a
+        formação) — medido: os corpos no terço de ataque continuavam em 1,0
+        mesmo com o gene ligado. off = alvo intocado."""
+        if P.get("high_camp") != "on" or target is None:
+            return target
+        if self.number in tac.FORWARDS:
+            frac = P["hc_floor_fwd"]
+        elif self.number in tac.MIDFIELDERS:
+            frac = P["hc_floor_mid"]
+        else:
+            return target
+        floor_x = (frac * MAX_X if side == lugo4py.TeamSide.HOME
+                   else (1.0 - frac) * MAX_X)
+        if side == lugo4py.TeamSide.HOME:
+            if target.x >= floor_x:
+                return target
+            return point(floor_x, target.y)
+        if target.x <= floor_x:
+            return target
+        return point(floor_x, target.y)
 
     def _sup_orders(self, inspector, move_order):
         """Ordens do apoiador. L11 (support_catch="on"): também emite catch —
