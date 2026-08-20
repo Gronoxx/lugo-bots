@@ -661,6 +661,14 @@ class MyBot(lugo4py.Bot, ABC):
             if cov is not None:
                 return self._sup_orders(inspector, safe_move(inspector, me, cov))
 
+            # v11/CERCO (def_camp): com a bola no NOSSO campo o acampado não
+            # desce para dar apoio curto — ele É o destino do passe longo.
+            if tac.ball_advance_frac(ball.position, side) < 0.5:
+                dcs = self._def_camp_target(inspector, me, side)
+                if dcs is not None:
+                    return self._sup_orders(inspector,
+                                            safe_move(inspector, me, dcs))
+
             # A4 (def_outlet): companheiro segura a bola no NOSSO terco =>
             # os mais proximos viram valvulas de escape (linha lateral/diagonal
             # recebivel) em vez de manter formacao — cria o passe que o
@@ -794,6 +802,34 @@ class MyBot(lugo4py.Bot, ABC):
             return target
         return point(floor_x, target.y)
 
+    def _def_camp_target(self, inspector, me, side, chasers=()):
+        """v11/CERCO (def_camp): ponto do ACAMPADO PERMANENTE, ou None.
+
+        Forense do 0×0 vs level-3 (20/08): a partida INTEIRA no nosso campo
+        (campo_adv deles 62,3%), 66 roubadas nossas e 137 passes a 94,5% de
+        acerto sem sair do nosso terço — porque `_cover_position` mistura a
+        formação com 30% do caminho bola→nosso gol e leva os 10 de linha para
+        x<6000: não existe PARA QUEM sair. O BotAdversario1 faz 10×0 no mesmo level-3
+        com 3 zagueiros fixos e 7 corpos altos. Aqui `dc_count` atacantes
+        (prioridade 10, 9, 11) mantêm um piso de avanço `dc_floor`
+        INDEPENDENTE da bola, inclusive defendendo; quem está perseguindo a
+        bola nunca acampa. off = alvo inalterado (byte-idêntico à v10).
+        """
+        if P.get("def_camp") != "on" or self.number in chasers:
+            return None
+        n = int(round(P["dc_count"]))
+        if n <= 0 or self.number not in tac.DEF_CAMPERS[:n]:
+            return None
+        ball = inspector.get_ball()
+        base = tac.formation_position(self.number, ball.position, side,
+                                      aggression=P["aggression_defend"])
+        frac = P["dc_floor"]
+        floor_x = (frac * MAX_X if side == lugo4py.TeamSide.HOME
+                   else (1.0 - frac) * MAX_X)
+        x = (max(base.x, floor_x) if side == lugo4py.TeamSide.HOME
+             else min(base.x, floor_x))
+        return point(x, base.y)
+
     def _sup_orders(self, inspector, move_order):
         """Ordens do apoiador. L11 (support_catch="on"): também emite catch —
         na disputa do turno seguinte à perda do portador, os apoiadores da v2
@@ -848,6 +884,13 @@ class MyBot(lugo4py.Bot, ABC):
             cpt = self._counterpress_target(inspector, me, side, chasers)
             if cpt is not None:
                 return [safe_move(inspector, me, cpt),
+                        inspector.make_order_catch()]
+
+            # v11/CERCO (def_camp): os acampados NÃO recuam com o cerco —
+            # são a saída de bola que faltava contra quem nos prende atrás.
+            dc = self._def_camp_target(inspector, me, side, chasers)
+            if dc is not None:
+                return [safe_move(inspector, me, dc),
                         inspector.make_order_catch()]
 
             # Sombra do camper (camper_shadow): 1 zagueiro cola no camper mais
@@ -969,6 +1012,13 @@ class MyBot(lugo4py.Bot, ABC):
                 if rt is not None:
                     return [safe_move(inspector, me, rt),
                             inspector.make_order_catch()]
+
+            # v11/CERCO (def_camp): idem na bola livre — o acampado espera
+            # a segunda bola lá em cima em vez de voltar para o bolo.
+            dc = self._def_camp_target(inspector, me, side, chasers)
+            if dc is not None:
+                return [safe_move(inspector, me, dc),
+                        inspector.make_order_catch()]
 
             # Sombra do camper (camper_shadow) também na bola livre. off = v3.
             sh = self._shadow_target(inspector, me, side)
@@ -1438,11 +1488,33 @@ class MyBot(lugo4py.Bot, ABC):
                             atirador = True
                             break
 
+            # v11/CERCO (outlet_risk): SAÍDA LONGA sob cerco. Forense do
+            # 0×0 vs level-3: 66 roubadas nossas viraram 137 passes a 94,5%
+            # de acerto DENTRO do nosso campo e 8 finalizações — a bola nunca
+            # saía porque todo candidato longo era vetado (interceptação /
+            # corrida no destino) e o reciclo curto sempre passava. O BotAdversario1
+            # goleia o mesmo level-3 errando 31-41 passes por jogo: a perda de
+            # uma bola LONGA cai no campo deles, é o tipo mais barato de erro.
+            # Com o portador cercado no nosso campo e o receptor já no campo
+            # adversário, os vetos são dispensados (mesma economia do
+            # `atirador`). off = v10 (flag nunca liga ⇒ decisão idêntica).
+            escape_long = False
+            if (P.get("outlet_risk") == "on" and mate.number != tac.GOALKEEPER
+                    and tac.ball_advance_frac(me.position, side)
+                    < P["orisk_maxfrac"]
+                    and tac.ball_advance_frac(target, side)
+                    >= P["orisk_recvfrac"]
+                    and self._opps_within(me.position, opponents,
+                                          P["orisk_radius"])
+                    >= P["orisk_minopps"]):
+                escape_long = True
+
             # Fase A — reforço cirúrgico #2 (C3): corrida no destino. A linha pode
             # estar limpa em trânsito e a recepção ser disputada. Descarta se um
             # adversário chega ao ponto de recepção antes do receptor (+margem).
             # Mesmo padrão de _touch_target. off = v9.
-            if P.get("pass_endpoint_race") == "on" and not atirador:
+            if (P.get("pass_endpoint_race") == "on"
+                    and not (atirador or escape_long)):
                 t_recv = turns_for_player(dist(mate.position, target))
                 if any(turns_for_player(dist(o.position, target))
                        <= t_recv + P["pass_endpoint_margin"] for o in opponents):
@@ -1451,8 +1523,8 @@ class MyBot(lugo4py.Bot, ABC):
             # veto de interceptação (velocity-aware se ligado). Uma varredura só:
             # quando pass_w_intercept>0 reusa intercept_risk p/ veto E score.
             r = None
-            if atirador:
-                pass                      # v11: risco aceito para armar o chute
+            if atirador or escape_long:
+                pass                      # v11: risco aceito (chute / saída)
             elif P["pass_w_intercept"] > 0.0:
                 r = intercept_risk(me.position, target, opponents, kick_speed, USE_VELOCITY)
                 if r <= 0.0:
@@ -1483,14 +1555,15 @@ class MyBot(lugo4py.Bot, ABC):
             # interação com hold_logic="caso" que anulava o risk_pass_shooter:
             # o gene disparava em 16,3% dos turnos e o gate de marcação
             # derrubava o candidato logo em seguida.
-            if require_unmarked_fwd and not atirador:
+            if require_unmarked_fwd and not (atirador or escape_long):
                 if advance <= 0.0:
                     continue
                 rf = carry.dribble_freedom(mate.position, opponents,
                                            inspector.get_opponent_goalkeeper(), goal_center)
                 if rf["cls"] in ("preso", "restrito"):
                     continue
-            elif P.get("pass_recv_gate") == "on" and not atirador:
+            elif (P.get("pass_recv_gate") == "on"
+                  and not (atirador or escape_long)):
                 rf = carry.dribble_freedom(mate.position, opponents,
                                            inspector.get_opponent_goalkeeper(), goal_center)
                 if rf["cls"] == "preso":

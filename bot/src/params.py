@@ -282,6 +282,17 @@ DEFAULTS = {
     # (mediana 0) no terco de ataque contra 8-9 do BotAdversario2. 0.70 = x 14000.
     "hc_floor_fwd": 0.70,
     "hc_floor_mid": 0.55,
+    # v11/CERCO (def_camp): piso de avanco dos ACAMPADOS PERMANENTES (valem
+    # tambem DEFENDENDO/DISPUTANDO, que e' quando o `_cover_position` puxava
+    # todo mundo para x<6000 e nos deixava sem saida contra o level-3).
+    # 0.58 = x 11600 (campo deles, fora da zona do gol deles com folga).
+    "dc_floor": 0.52,
+    "dc_count": 2.0,                  # quantos acampam (prioridade 10, 9, 11)
+    # v11/CERCO (outlet_risk): condicoes da SAIDA LONGA com vetos dispensados.
+    "orisk_maxfrac": 0.40,            # portador no nosso campo (fracao de avanco)
+    "orisk_recvfrac": 0.45,           # receptor ja perto do meio-campo deles
+    "orisk_radius": 2500.0,           # raio do cerco em volta do portador
+    "orisk_minopps": 2.0,             # quantos adversarios dentro do raio
     # v7/CENAS (press_hold_mark): "fundo" = atacante adversario mais perto do
     # nosso gol que a bola menos esta margem.
     "phm_margin": 500.0,
@@ -559,6 +570,13 @@ STRUCTURE_DEFAULTS = {
     # v11/FORENSE (high_camp): o "2-8" do BotAdversario2 — atacantes/meias com piso
     # de avanco INDEPENDENTE da bola enquanto atacamos.
     "high_camp": "off",                    # | on
+    # v11/CERCO (def_camp): 1-3 corpos NAO recuam quando o adversario cerca —
+    # o "3 fixos + 7 altos" com que o BotAdversario1 faz 10x0 no mesmo level-3 que
+    # nos cercou no 0x0. Sem eles nao existe destino para a bola recuperada.
+    "def_camp": "off",                     # | on
+    # v11/CERCO (outlet_risk): dispensa os vetos do passe LONGO de saida
+    # quando estamos cercados no proprio campo (o erro mais barato que existe).
+    "outlet_risk": "off",                  # | on
     # v7/CENAS (press_hold_mark — solução 2, versao SUBSTITUICAO): eleito que
     # marca atacante fundo e trocado pelo proximo do rank (mesmo nº de
     # pressers; remocao pura violaria a lei da passividade).
@@ -727,6 +745,12 @@ BOUNDS = {
     "rps_minfrac": (0.3, 0.8),
     "hc_floor_fwd": (0.5, 0.9),
     "hc_floor_mid": (0.35, 0.8),
+    "dc_floor": (0.40, 0.85),
+    "dc_count": (1.0, 3.0),
+    "orisk_maxfrac": (0.2, 0.6),
+    "orisk_recvfrac": (0.35, 0.75),
+    "orisk_radius": (1200.0, 5000.0),
+    "orisk_minopps": (1.0, 5.0),
     "phm_margin": (0.0, 2000.0),
     "hybrid_close_range": (2000.0, 4500.0),
     "support_n_forward": (0.0, 5.0),
@@ -808,6 +832,8 @@ STRUCTURE_OPTIONS = {
     "lane_seek": ["off", "on"],
     "risk_pass_shooter": ["off", "on"],
     "high_camp": ["off", "on"],
+    "def_camp": ["off", "on"],
+    "outlet_risk": ["off", "on"],
 }
 
 

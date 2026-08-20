@@ -22,6 +22,14 @@ DEFENDERS = (2, 3, 4, 5)
 MIDFIELDERS = (6, 7, 8)
 FORWARDS = (9, 10, 11)
 
+# v11/CERCO (def_camp): ordem de prioridade dos ACAMPADOS PERMANENTES — os que
+# NÃO recuam quando o adversário nos cerca. Medido no 0×0 vs level-3: com o
+# `_cover_position` puxando todo mundo (0,5*formação + 0,5*30%-rumo-ao-gol), os
+# 10 de linha ficavam em x<6000 e não havia PARA QUEM sair — 137 passes a 94,5%
+# de acerto sem sair do nosso campo. O BotAdversario1 faz 10×0 no mesmo level-3 com 3
+# zagueiros fixos e 7 corpos altos.
+DEF_CAMPERS = (10, 9, 11)
+
 # Formação base em coordenadas normalizadas (0 = nosso gol, 1 = gol adversário).
 # (x_frac, y_frac). y_frac 0 = borda inferior, 1 = borda superior.
 BASE_FORMATION = {
