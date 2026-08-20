@@ -287,7 +287,9 @@ DEFAULTS = {
     # todo mundo para x<6000 e nos deixava sem saida contra o level-3).
     # 0.58 = x 11600 (campo deles, fora da zona do gol deles com folga).
     "dc_floor": 0.52,
-    "dc_count": 2.0,                  # quantos acampam (prioridade 10, 9, 11)
+    "dc_count": 2.0,       # quantos acampam (10, 9, 11, depois 7, 6, 8)
+    "dc_floor_mid": 0.45,  # piso dos MEIAS acampados (dc_count > 3)
+    "dc_floor_def": 0.38,  # piso dos ZAGUEIROS acampados (dc_count > 6)
     # v11/CERCO (outlet_risk): condicoes da SAIDA LONGA com vetos dispensados.
     "orisk_maxfrac": 0.40,            # portador no nosso campo (fracao de avanco)
     "orisk_recvfrac": 0.45,           # receptor ja perto do meio-campo deles
@@ -746,7 +748,9 @@ BOUNDS = {
     "hc_floor_fwd": (0.5, 0.9),
     "hc_floor_mid": (0.35, 0.8),
     "dc_floor": (0.40, 0.85),
-    "dc_count": (1.0, 3.0),
+    "dc_count": (1.0, 8.0),
+    "dc_floor_mid": (0.35, 0.75),
+    "dc_floor_def": (0.25, 0.70),
     "orisk_maxfrac": (0.2, 0.6),
     "orisk_recvfrac": (0.35, 0.75),
     "orisk_radius": (1200.0, 5000.0),

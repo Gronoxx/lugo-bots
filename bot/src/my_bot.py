@@ -600,6 +600,12 @@ class MyBot(lugo4py.Bot, ABC):
         por papel. Devolve o ponto de cobertura p/ `me`, ou None. off = v9."""
         if P.get("cover_mode") != "on" or me.number not in tac.DEFENDERS:
             return None
+        # v12: zagueiro ACAMPADO (def_camp com dc_count>=7) nao volta a marcar
+        # — senao o "2-8" se desfaz justamente no estado de apoio.
+        if P.get("def_camp") == "on":
+            n_c = int(round(P["dc_count"]))
+            if n_c > 0 and me.number in tac.DEF_CAMPERS[:n_c]:
+                return None
         ourg = self.mapper.get_defense_goal().get_center()
         opps = [o for o in inspector.get_opponent_players()
                 if o.number != tac.GOALKEEPER
@@ -823,7 +829,13 @@ class MyBot(lugo4py.Bot, ABC):
         ball = inspector.get_ball()
         base = tac.formation_position(self.number, ball.position, side,
                                       aggression=P["aggression_defend"])
-        frac = P["dc_floor"]
+        idx = tac.DEF_CAMPERS.index(self.number)
+        if idx < tac.DEF_CAMPER_MID_FROM:
+            frac = P["dc_floor"]
+        elif idx < tac.DEF_CAMPER_DEF_FROM:
+            frac = P["dc_floor_mid"]
+        else:
+            frac = P["dc_floor_def"]
         floor_x = (frac * MAX_X if side == lugo4py.TeamSide.HOME
                    else (1.0 - frac) * MAX_X)
         x = (max(base.x, floor_x) if side == lugo4py.TeamSide.HOME

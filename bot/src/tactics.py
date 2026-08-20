@@ -28,7 +28,16 @@ FORWARDS = (9, 10, 11)
 # 10 de linha ficavam em x<6000 e não havia PARA QUEM sair — 137 passes a 94,5%
 # de acerto sem sair do nosso campo. O BotAdversario1 faz 10×0 no mesmo level-3 com 3
 # zagueiros fixos e 7 corpos altos.
-DEF_CAMPERS = (10, 9, 11)
+DEF_CAMPERS = (10, 9, 11, 7, 6, 8, 5, 2)
+# Índice a partir do qual o acampado é MEIA (usa o piso `dc_floor_mid`, mais
+# baixo): os três primeiros são atacantes. Com dc_count=6 a forma vira o
+# "4-6" — o cerco permanente do BotAdversario2 (8-9 corpos no campo deles), que é o
+# desenho de quem faz 9-12 gols nos oficiais.
+DEF_CAMPER_MID_FROM = 3
+# A partir daqui o acampado e ZAGUEIRO (piso `dc_floor_def`): com
+# dc_count=8 sobram 2 zagueiros + goleiro atras — o "2-8" literal do
+# BotAdversario2, que faz 12x2 e 10x0 nos oficiais. E o extremo do desenho.
+DEF_CAMPER_DEF_FROM = 6
 
 # Formação base em coordenadas normalizadas (0 = nosso gol, 1 = gol adversário).
 # (x_frac, y_frac). y_frac 0 = borda inferior, 1 = borda superior.

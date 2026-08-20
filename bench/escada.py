@@ -66,6 +66,10 @@ def main():
     ap.add_argument("--parallel", type=int, default=2)
     args = ap.parse_args()
 
+    # docker-compose REJEITA nome de projeto com maiuscula (ja custou 64
+    # partidas em 18/08 e outras 16 hoje): normalizar aqui, de uma vez.
+    args.tag = args.tag.lower()
+
     genome = open(args.genome).read().strip()
     jobs = [(genome, args.opp, f"esc_{args.tag}_{side}_{r}", side, args.mode,
              args.knockout)
