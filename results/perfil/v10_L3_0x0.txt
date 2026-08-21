@@ -1,0 +1,5 @@
+--- v10_L3_0x0 (946 amostras) ---
+  bola por terço: def 26.7% | meio 11.3% | ATAQUE 61.9%
+  corpos HOME no terço de ataque: media 0.48 (quando a bola LA: 0.58)
+  corpos AWAY no terco defensivo deles: media 3.29
+  dist. do mais proximo da bola: HOME  4156 | AWAY  3191

@@ -1,0 +1,5 @@
+--- BotAdversario1_L3_10x0 (408 amostras) ---
+  bola por terço: def  1.0% | meio 45.6% | ATAQUE 53.4%
+  corpos HOME no terço de ataque: media 0.00 (quando a bola LA: 0.01)
+  corpos AWAY no terco defensivo deles: media 2.92
+  dist. do mais proximo da bola: HOME  6693 | AWAY  1279
