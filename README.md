@@ -18,8 +18,10 @@ The first phase is not a group stage. Entrants are challenged by three official 
 **points depend on which one you beat**: a win against level-3 is worth 8, against level-2 is
 worth 7, against level-1 is worth 5. Draws are worth 3, 3 and 1.
 
-The seeding tiebreak then runs, in order: goal difference against L3, goals against L3, goal
-difference against L2, and so on.
+Ranking is by points. The first tiebreak is **overall goal difference**. Only if that also ties
+does the specific sequence begin: goal difference against L3, then goals against L3, then goal
+difference against L2, then goals against L2, then goal difference against L1, and finally the
+registration date.
 
 Two consequences drove the entire project. **Winning is not enough, the criterion is margin**,
 which is what pushed the work towards offensive volume. And since a version can be swapped at any
@@ -33,8 +35,9 @@ time, one genome per opponent is both legal and advantageous.
 | level-2 | 3 to 2 | 7 | 6 shots for 3 goals, but they shot 46 times |
 | level-3 | 0 to 0 | 3 | the match that decided everything: 6 shots against 15, 76% of the time in our half |
 
-Fifteen points, three matches, no defeats. And out, because goal difference against L3 is the
-first tiebreak and ours was zero.
+Fifteen points, three matches, no defeats, and an overall goal difference of plus two. Out
+anyway, because with only eight slots the field was decided on tiebreaks, and the goalless draw
+against `level-3` left every criterion that follows overall goal difference at zero.
 
 ## The central mistake
 
@@ -43,7 +46,8 @@ measured against `level-1`, whose goalkeeper **parries** long shots. Against tha
 shot turns into a rebound and often a goal, so the bench kept rewarding distance.
 
 The `level-3` keeper **holds** the ball. Against him the same shot is a clean giveaway: no goal
-and no rebound either. And `level-3` was the opponent the tiebreak cared about.
+and no rebound either. And `level-3` is the opponent that carries the most points and sits at the
+top of the specific tiebreak sequence.
 
 The measuring stick was not wrong through carelessness. It was wrong because it measured the
 opponent that was available, not the opponent that decided qualification. That is a validity
