@@ -7,42 +7,54 @@ Open Championship, from August to October 2026. This repository holds the bot, t
 bench, the simulators, the opponent analysis, and above all an honest record of what worked, what
 did not, and why.
 
-We did not make it past the group stage. The write-up explains exactly where the project failed,
-and the diagnosis is more interesting than the score: **the bot did not lose for lack of
-engineering. It lost because we measured the wrong thing for two weeks.**
+The bot was eliminated **undefeated**, and the write-up explains exactly how. The diagnosis is
+more interesting than the score: it was not beaten by better opponents. It was ruled out by a
+tiebreak, and the tiebreak punished precisely the thing the measuring bench had been optimising
+in the wrong direction for two weeks.
 
-## The central mistake
+## How the tournament works, because it explains everything
 
-We optimised the attack against `level-1`, whose goalkeeper **parries** long shots. A long shot
-against that keeper turns into a rebound and often a goal, so the lab rewarded volume from
-distance.
+The first phase is not a group stage. Entrants are challenged by three official bots, and
+**points depend on which one you beat**: a win against level-3 is worth 8, against level-2 is
+worth 7, against level-1 is worth 5. Draws are worth 3, 3 and 1.
 
-The `level-3` keeper **holds** the ball. Against him the same shot is a clean giveaway: no goal and
-no rebound either. The measuring stick was not wrong through carelessness. It was wrong because it
-measured the opponent that was available, not the opponent that decided qualification.
+The seeding tiebreak then runs, in order: goal difference against L3, goals against L3, goal
+difference against L2, and so on.
 
-That is a validity problem, not a tuning problem, and no amount of further optimisation against
-`level-1` would have surfaced it.
+Two consequences drove the entire project. **Winning is not enough, the criterion is margin**,
+which is what pushed the work towards offensive volume. And since a version can be swapped at any
+time, one genome per opponent is both legal and advantageous.
 
 ## Result
-
-Group stage, the matches that counted:
 
 | Opponent | Score | Points | Note |
 |---|---|---|---|
 | level-1 | 1 to 0 | 5 | 218 completed passes and 2 shots on goal: sterile possession |
 | level-2 | 3 to 2 | 7 | 6 shots for 3 goals, but they shot 46 times |
-| level-3 | 0 to 0 | 3 | the elimination match: 6 shots against 15, 76% of the time in our half |
+| level-3 | 0 to 0 | 3 | the match that decided everything: 6 shots against 15, 76% of the time in our half |
 
-Fifteen points and a goal difference of zero against `level-3`. The seeding tiebreak runs goal
-difference against L3, then goals against L3, then goal difference against L2. Zero goals in the
-first criterion is what knocked us out.
+Fifteen points, three matches, no defeats. And out, because goal difference against L3 is the
+first tiebreak and ours was zero.
 
-After elimination, with the version that arrived late, the bot won 4 to 2 away against
-`BotAdversario7` with **26 shots against 8**, where the tournament version produced 8. The same
-opponent had beaten `BotAdversario5` by 8 to 0. The design was right. It was ready after the match
-that mattered, and both final versions sat stuck in "On tests" on the platform during the decisive
-hours.
+## The central mistake
+
+The regulation rewards margin, so the bench was built to maximise offensive volume. Volume was
+measured against `level-1`, whose goalkeeper **parries** long shots. Against that keeper a long
+shot turns into a rebound and often a goal, so the bench kept rewarding distance.
+
+The `level-3` keeper **holds** the ball. Against him the same shot is a clean giveaway: no goal
+and no rebound either. And `level-3` was the opponent the tiebreak cared about.
+
+The measuring stick was not wrong through carelessness. It was wrong because it measured the
+opponent that was available, not the opponent that decided qualification. That is a validity
+problem rather than a tuning problem, and no further optimisation against `level-1` would have
+surfaced it.
+
+After elimination, in the challenge matches, the corrected version won 4 to 2 away against
+`BotAdversario7`, producing **26 shots** where the tournament version had produced 8. The same
+opponent had beaten `BotAdversario5` by 8 to 0. The design was right and it was finished after
+the match that mattered, with both final versions stuck in "On tests" on the platform during the
+decisive hours.
 
 ## Architecture: the bot as a genome
 
