@@ -8,9 +8,9 @@ Reunião editada dos quatro blocos de pesquisa numa referência única. Convenç
 **[AUTORITATIVO: specs/protobuf]** = lido do código/descriptor instalado · **[MEDIDO: replay, N]** = confirmado em replays reais · **[INFERIDO]** = modelo derivado/validado pelo time · **[DESCONHECIDO]** = não presente nas fontes deste ambiente.
 
 Fontes canônicas (todas absolutas):
-- SDK: `<caminho local>` (`src/`, `protos/`, `mapper/`)
-- Física do time: `<caminho local>`, `<caminho local>`, `bot/src/finishing.py`
-- Parser + replays: `<caminho local>`, `<caminho local>` (221 arquivos)
+- SDK: `$HOME/lugo-bots/.venv/lib/python3.14/site-packages/lugo4py/` (`src/`, `protos/`, `mapper/`)
+- Física do time: `$HOME/lugo-bots/analysis/physics.py`, `$HOME/lugo-bots/bot/src/geometry.py`, `bot/src/finishing.py`
+- Parser + replays: `$HOME/lugo-bots/analysis/replay.py`, `$HOME/lugo-bots/bench/recordings/*.json` (221 arquivos)
 
 **Fato transversal de serialização** (confirmado em replays): protobuf→JSON **omite campos com valor default** (`x=0`, `side=HOME=0`, `score=0`, `number=0`, `state=WAITING=0`, `turn=0`, `speed=0`). No runtime gRPC as sub-mensagens **nunca são `None`** — retornam a instância default. Logo `get_ball_holder()` nunca é `None`: sem dono retorna um `Player` com `number == 0` (é assim que o SDK detecta "bola livre"). Fonte: `analysis/replay.py:6-11`, `src/define_state.py:38`. **[AUTORITATIVO: código + MEDIDO]**
 

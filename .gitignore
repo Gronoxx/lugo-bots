@@ -30,3 +30,6 @@ rl/checkpoints/
 
 # snapshot de código p/ portões de inércia — recriável
 bench/baselines/
+
+# codigo de terceiros: nao redistribuir (ver rivals/README.md)
+rivals/*/

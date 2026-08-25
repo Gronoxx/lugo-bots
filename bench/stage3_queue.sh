@@ -3,7 +3,7 @@
 # compósito vencedor + sweeps finos + painel de robustez (maximin).
 # Uso: ./stage3_queue.sh '<genes-extra-do-composito-JSON>'
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V3=$(cat ../bot/genome_submit.json)
 COMP="${1:?passar genes do compósito}"

@@ -4,7 +4,7 @@
 # Aceite: v3 não pior que v2 no self-play (saldo ≥ −0,15, não significativo) e
 # sofridos vs sparring menores/iguais; level-1 saldo mantido.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 mkdir -p ../results/screen
 

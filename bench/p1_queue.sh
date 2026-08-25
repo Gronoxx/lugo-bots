@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # P1 — finalização na régua certa (GK externo = level-1). 3 A/Bs, base = v3.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V3=$(cat ../bot/genome_submit.json)
 mkdir -p ../results/screen

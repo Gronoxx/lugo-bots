@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V4=$(cat ../bot/genome_v4_candidate.json)
 V3=$(cat ../bot/genome_submit.json)

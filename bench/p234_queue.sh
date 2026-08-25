@@ -2,7 +2,7 @@
 # Fila noturna P2→P3→P4 (screenings da barra nova; base = v3).
 # Pares de 2 experimentos simultâneos (parallel 2 cada). Logs em results/screen/.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V3=$(cat ../bot/genome_submit.json)
 mkdir -p ../results/screen
