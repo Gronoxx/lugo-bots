@@ -62,9 +62,8 @@ surfaced it.
 
 After elimination, in the challenge matches, the corrected version won 4 to 2 away against
 `BotAdversario7`, producing **26 shots** where the tournament version had produced 8. The same
-opponent had beaten `BotAdversario5` by 8 to 0. The design was right and it was finished after
-the match that mattered, with both final versions stuck in "On tests" on the platform during the
-decisive hours.
+opponent had beaten `BotAdversario5` by 8 to 0. The design was right and it was finished after the match that mattered, with both final versions
+stuck in "On tests" on the platform during the decisive hours.
 
 ## Architecture: the bot as a genome
 
@@ -149,11 +148,16 @@ publishing on time. The validation window is a resource the opponent also consum
 well documented, but the signals were available long before the structural ceiling was proved
 against a strong opponent.
 
-**Always keep a validated fallback version.** When the two good versions got stuck in platform
-testing, `main` held a version measurably bad against `level-3`, the 0 to 0 one, while a
-measurably good version, v6 with a 3 to 0 against the same opponent, sat `Ready` and available.
-Swapping was allowed by the rules and it was not done in time. That one is not a measurement
-failure, it is risk management.
+**Buy information before the window closes.** The last call was a bet made with almost no data.
+An older version had won 3 to 0 against `level-3`, but on a single match, and access to `level-3`
+is rationed, so revalidating it close to the deadline was not possible. The choice was between a
+result with a sample of one and a newer version with a higher ceiling. Since the ranking is decided
+on goal difference, even a confirmed 3 to 0 was unlikely to be enough, which made the newer version
+the rational bet.
+
+The bet itself was defensible. What went wrong was upstream of it: by the time the decision had to
+be made, there was no budget left to reduce the uncertainty. Both final versions then sat stuck in
+platform testing during the decisive hours, so the aggressive option never even played.
 
 ## Reinforcement learning track
 
