@@ -12,6 +12,13 @@ de engenharia, perdeu por medir a coisa errada durante duas semanas.**
 > O README original, escrito no início do projeto (10/08), está preservado em
 > `results/README_INICIAL_2026-08-10.md`.
 
+> **Nomes fictícios.** Os bots adversários aparecem neste repositório como
+> `BotAdversario1`, `BotAdversario2`, … e os autores de bots públicos como
+> `Participante1`, … — **os nomes reais foram substituídos** para não expor
+> participantes da competição. A numeração é consistente em todos os documentos:
+> `BotAdversario1` é sempre o mesmo bot. Placares, estatísticas e identificadores de
+> partida são reais; só os nomes mudaram.
+
 ---
 
 ## Índice
