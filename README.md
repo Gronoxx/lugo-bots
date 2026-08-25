@@ -23,6 +23,8 @@ does the specific sequence begin: goal difference against L3, then goals against
 difference against L2, then goals against L2, then goal difference against L1, and finally the
 registration date.
 
+The eight best-placed entrants go through to the knockout stage.
+
 Two consequences drove the entire project. **Winning is not enough, the criterion is margin**,
 which is what pushed the work towards offensive volume. And since a version can be swapped at any
 time, one genome per opponent is both legal and advantageous.
@@ -46,8 +48,12 @@ measured against `level-1`, whose goalkeeper **parries** long shots. Against tha
 shot turns into a rebound and often a goal, so the bench kept rewarding distance.
 
 The `level-3` keeper **holds** the ball. Against him the same shot is a clean giveaway: no goal
-and no rebound either. And `level-3` is the opponent that carries the most points and sits at the
-top of the specific tiebreak sequence.
+and no rebound either.
+
+One measurement closes the diagnosis. When `chance_origin.py` was finally built, it showed that
+**73% of our chances came from opponent goalkeeper rebounds**. A keeper who holds does not reduce
+that production, he eliminates it. The 0 to 0 was not bad luck on the day, it was the predictable
+output of a chance factory whose main input did not exist against that opponent.
 
 The measuring stick was not wrong through carelessness. It was wrong because it measured the
 opponent that was available, not the opponent that decided qualification. That is a validity
@@ -119,6 +125,36 @@ conceded reached a "perfect" 0.06. Classic starvation. The bot became excellent 
 incapable of winning. Only a bisection found it, and the lesson is that approving changes
 individually says nothing about approving them jointly.
 
+## What I would do differently
+
+The six items below are the actual output of this project, more than any score.
+
+**Measure against the opponent that decides, from day one.** `level-2` and `level-3` exist only on
+the platform, with a quota of five matches per day. That is not an obstacle, it is a budget to be
+spent with discipline, and it was spent late and badly. One challenge against `level-3` per day,
+from the first week, would have exposed the conversion curve months earlier.
+
+**Decompose every gain by mechanism before celebrating it.** The jump from 1.44 to 3.58 goals
+looked like progress and was half artefact. The question "through which channel?" should be
+mandatory alongside "by how much?".
+
+**Build `chance_origin.py` at the start, not at the end.** Knowing that 73% of chances came from
+opponent keeper rebounds would have changed every earlier decision, and would have predicted that
+a keeper who holds zeroes the entire factory.
+
+**Treat the platform queue as part of the deadline.** Publishing two hours before the match is not
+publishing on time. The validation window is a resource the opponent also consumes.
+
+**Shelve the reinforcement learning track a week earlier.** Stopping was the right call and it was
+well documented, but the signals were available long before the structural ceiling was proved
+against a strong opponent.
+
+**Always keep a validated fallback version.** When the two good versions got stuck in platform
+testing, `main` held a version measurably bad against `level-3`, the 0 to 0 one, while a
+measurably good version, v6 with a 3 to 0 against the same opponent, sat `Ready` and available.
+Swapping was allowed by the rules and it was not done in time. That one is not a measurement
+failure, it is risk management.
+
 ## Reinforcement learning track
 
 `rl/` holds a track with custom environments, evaluation harness and a JAX implementation. It was
@@ -149,4 +185,8 @@ I would do differently.
 
 ## Credits
 
-Project by Gustavo (@Gronoxx), developed in pairing with Claude (Anthropic).
+Project by Gustavo (@Gronoxx), developed in pairing with Claude (Anthropic) through Claude Code.
+The strategic decisions, the experiment design and several of the central ideas came from the
+author: the self-play measuring stick, the simulated scenes reconstructed from video, and the
+requirement of forensic justification rather than a binary result. Implementation, measurement and
+reporting were built together.
