@@ -2,7 +2,7 @@
 
 > Plano aprovado em 2026-08-16 (barra nova + pacotes P0-P6 + destino do RL).
 > Relatório VIVO: preencher vereditos por pacote conforme executa.
-> Referências: results/ANALISE_BotAdversario1_2026-08-15.md (sessão anterior),
+> Referências: results/ANALISE_BOTADVERSARIO1_2026-08-15.md (sessão anterior),
 > results/RL_MOTHBALL_CONDICOES.md, plano em ~/.claude/plans/.
 
 ## A barra nova (em vigor)
