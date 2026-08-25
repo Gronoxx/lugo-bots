@@ -80,6 +80,28 @@ def initial_state(batch: int) -> State:
         goal_zone_turns=jnp.zeros(batch, jnp.int32))
 
 
+def finishing_state(batch: int, key) -> State:
+    """Estado de 'treino de finalização' (start-state curriculum): a bola começa
+    PERTO do gol AWAY (x∈[15000,18000], y∈[3500,6500], fora do círculo 1400) com um
+    jogador de LINHA do HOME (idx 1..10) segurando-a. Expõe o policy a MUITAS
+    situações de chute -> aprende a finalizar (sinal de gol denso). Demais jogadores
+    na formação padrão. Usar em fração inicial do treino, depois misturar starts
+    normais (initial_state)."""
+    s = initial_state(batch)
+    k1, k2, k3 = jax.random.split(key, 3)
+    bx = jax.random.uniform(k1, (batch,), minval=15000.0, maxval=18000.0)
+    by = jax.random.uniform(k2, (batch,), minval=GOAL_MIN_Y, maxval=GOAL_MAX_Y)
+    ball_pos = jnp.stack([bx, by], axis=-1)                          # (B,2)
+    hidx = jax.random.randint(k3, (batch,), 1, 11).astype(jnp.int32)  # linha 1..10
+    bi = jnp.arange(batch)
+    pos = s.pos.at[bi, HOME, hidx].set(ball_pos)                     # holder na bola
+    return s.replace(pos=pos, ball_pos=ball_pos,
+                     holder_side=jnp.zeros(batch, jnp.int32),        # HOME segura
+                     holder_idx=hidx,
+                     shot_clock_side=jnp.zeros(batch, jnp.int32),
+                     shot_clock=jnp.full(batch, SHOT_CLOCK_TIME, jnp.int32))
+
+
 def _norm(v):
     return jnp.sqrt(jnp.sum(v * v, axis=-1))
 
