@@ -1,0 +1,4 @@
+# Contexto de build da submissão: só bot/ (a raiz tem 5GB+ de replays/venv/upstream).
+# O .lugo/Dockerfile só usa bot/requirements.txt, bot/src e bot/genome_submit.json.
+*
+!bot

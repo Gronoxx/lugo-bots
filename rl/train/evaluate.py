@@ -1,8 +1,12 @@
 """
-Avalia uma política JAX no env do Lugo, em jogos COMPLETOS, reportando saldo de
-gols e taxa de vitória. Oponente = outra política (pkl) ou 'chase' (baseline).
+Avalia uma política JAX no env do Lugo, em jogos COMPLETOS, reportando gols e
+taxa de vitória. Oponente = outra política (pkl) ou 'chase'/'static' (baseline).
 
-  ../.venv-rl/bin/python rl/train/evaluate.py policy.pkl [opp.pkl|chase] [n_games] [episode_len]
+  ../.venv-rl/bin/python rl/train/evaluate.py policy.pkl [opp.pkl|chase|static] [n_games] [episode_len]
+
+NOTA: os gols são ACUMULADOS por evento (Δplacar>0) durante o scan — NÃO ler
+`final.score`, pois o último step (turn>=episode_len) dispara o auto-reset que
+ZERA o placar (bug corrigido 2026-08-13; antes o eval reportava sempre 0x0).
 """
 import pickle
 import sys
@@ -28,11 +32,10 @@ def chase_action(state):
     (B,2,11,4) [move_dir,kick_dir,catch,jump] no referencial canônico."""
     import actions as A
     to = state.ball_pos[:, None, None, :] - state.pos          # (B,2,11,2)
-    # canoniza x por lado (mesma convenção da obs): AWAY espelha x
     sign = jnp.array([1.0, -1.0]).reshape(1, 2, 1)
     ang = jnp.arctan2(to[..., 1], to[..., 0] * sign) % (2 * jnp.pi)
     md = (jnp.round(ang / (2 * jnp.pi / A.N_DIR)).astype(jnp.int32) % A.N_DIR) + 1
-    kd = jnp.zeros_like(md)                                     # chase não chuta
+    kd = jnp.zeros_like(md)
     catch = jnp.ones_like(md)
     jump = jnp.zeros_like(md)
     return jnp.stack([md, kd, catch, jump], -1)
@@ -65,19 +68,22 @@ def evaluate(home, away, n_games, episode_len, sample=True):
                 aA, _ = sample_action(actor.apply(away, aobs[:, J.AWAY]), ka)
             else:
                 aA = _greedy(away, aobs[:, J.AWAY])
-            state, obs, _, _, _ = step(state, jnp.stack([aH, aA], 1))
-            terr = (state.ball_pos[:, 0] > J.MAX_X / 2).astype(jnp.float32)   # bola no campo do AWAY
-            poss = (state.holder_side == J.HOME).astype(jnp.float32)
-            return (state, obs, key), (terr, poss)
-        (state, obs, key), (terr, poss) = jax.lax.scan(
+            s2, obs2, _, _, _ = step(state, jnp.stack([aH, aA], 1))
+            terr = (s2.ball_pos[:, 0] > J.MAX_X / 2).astype(jnp.float32)
+            poss = (s2.holder_side == J.HOME).astype(jnp.float32)
+            gh = ((s2.score[:, J.HOME] - state.score[:, J.HOME]) > 0).astype(jnp.float32)  # gol HOME
+            ga = ((s2.score[:, J.AWAY] - state.score[:, J.AWAY]) > 0).astype(jnp.float32)  # gol AWAY
+            return (s2, obs2, key), (terr, poss, gh, ga)
+        (state, obs, key), (terr, poss, gh, ga) = jax.lax.scan(
             body, (state, obs, key), None, length=episode_len)
-        return state, terr.mean(), poss.mean()
-    final, terr, poss = run(state, obs, jax.random.PRNGKey(0))
-    sc = np.asarray(final.score)
-    diff = sc[:, J.HOME] - sc[:, J.AWAY]
-    print(f"HOME {sc[:,0].mean():.2f} x {sc[:,1].mean():.2f} AWAY | saldo {diff.mean():+.2f} "
+        return terr.mean(), poss.mean(), gh.sum(0), ga.sum(0)   # gols somados por jogo
+    terr, poss, gh, ga = run(state, obs, jax.random.PRNGKey(0))
+    gh, ga = np.asarray(gh), np.asarray(ga)
+    diff = gh - ga
+    print(f"HOME {gh.mean():.2f} x {ga.mean():.2f} AWAY | saldo {diff.mean():+.2f} "
           f"| território(HOME) {float(terr)*100:.0f}% | posse(HOME) {float(poss)*100:.0f}% "
-          f"| vit {float((diff>0).mean())*100:.0f}% (n={n_games},{episode_len}t)")
+          f"| vit {float((diff>0).mean())*100:.0f}% emp {float((diff==0).mean())*100:.0f}% "
+          f"(n={n_games},{episode_len}t)")
     return diff.mean()
 
 

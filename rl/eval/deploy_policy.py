@@ -27,7 +27,7 @@ from lugo4py.protos import server_pb2, physics_pb2
 
 import step as J
 from obs import get_obs
-from networks import Actor
+from networks import Actor, sample_action
 import actions as A
 
 _actor = Actor(nvec=tuple((17, 17, 2, 2)))
@@ -73,17 +73,30 @@ def _greedy_side(params, aobs_side):
     return jnp.stack([lg.argmax(-1) for lg in logits], -1)      # (1,11,4)
 
 
-def make_net_policy(params_path=None, params=None):
+@jax.jit
+def _sample_side(params, aobs_side, key):
+    a, _ = sample_action(_actor.apply(params, aobs_side), key)  # (1,11,4)
+    return a
+
+
+def make_net_policy(params_path=None, params=None, sample=True, seed=0):
+    """sample=True (default): amostra as ações — ESSENCIAL, pois argmax zera o
+    kick_dir (o policy nunca chuta). Igual ao regime de avaliação."""
     if params is None:
         with open(params_path or (_R / "rl/checkpoints/policy.pkl"), "rb") as f:
             params = jax.tree_util.tree_map(jnp.asarray, pickle.load(f))
+    key = [jax.random.PRNGKey(seed)]
 
     def policy(side, number, inspector):
         me = inspector.get_me()
         snap = inspector.get_snapshot()
         state = snapshot_to_state(snap)
         aobs, _ = get_obs(state)                              # (1,2,11,109)
-        act = np.asarray(_greedy_side(params, aobs[:, side]))[0]  # (11,4)
+        if sample:
+            key[0], k = jax.random.split(key[0])
+            act = np.asarray(_sample_side(params, aobs[:, side], k))[0]  # (11,4)
+        else:
+            act = np.asarray(_greedy_side(params, aobs[:, side]))[0]
         md, kd, catch, jump = act[number - 1]
         sign = 1.0 if side == J.HOME else -1.0                # des-canoniza x do AWAY
         orders = []
