@@ -207,7 +207,7 @@ condução-Casos, finalização, game_state) OFF — neutros/negativos no self-p
 
 ## Como testar (comandos)
 ```
-PY=<caminho local>   # worktree nao tem .venv proprio
+PY=$HOME/lugo-bots/.venv/bin/python   # worktree nao tem .venv proprio
 # inercia (off = v9):
 PYTHONPATH=~/lugo-bots/bot/src:~/lugo-bots/analysis   $PY bench/decide_dump.py <replay> > base.txt
 PYTHONPATH=~/lugo-quando-passar/bot/src:~/lugo-quando-passar/analysis $PY bench/decide_dump.py <replay> > qp.txt

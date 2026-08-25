@@ -11,8 +11,8 @@ proximidade quando o corpo do adversario chega a <=300 (TOUCH_RADIUS) da bola.
 Bola em posse anda grudada com o portador (~100 u/turno).
 
 Rodar:
-  PYTHONPATH=<caminho local> \
-  <caminho local> <caminho local>
+  PYTHONPATH=$HOME/lugo-quando-passar/bot/src:$HOME/lugo-quando-passar/analysis \
+  $HOME/lugo-bots/.venv/bin/python $HOME/lugo-quando-passar/bench/proto_reach.py
 """
 
 import math
@@ -22,7 +22,7 @@ from geometry import (
     GOALKEEPER_HALF_EXTENT, MAX_X, GOAL_MIN_Y, GOAL_MAX_Y, DANGEROUS_SHOT_RANGE,
 )
 
-REPLAY = "<caminho local>"
+REPLAY = "$HOME/lugo-bots/bench/recordings/fin_002_home.json"
 HORIZONS = [1, 2, 3, 5, 10]
 DIRS = list(range(0, 360, 5))          # 72 direcoes, 5 em 5 graus
 NDIR = len(DIRS)

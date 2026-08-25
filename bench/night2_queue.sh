@@ -3,7 +3,7 @@
 # (anatomia dos gols do BotAdversario1 v3) → sym-kickoff vs sparring + duelo
 # sb_dist 2600×3200 sobre a v4 vs level-1. Máx 2 partidas simultâneas.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V3=$(cat ../bot/genome_submit.json)
 V4=$(cat ../bot/genome_v4_candidate.json)

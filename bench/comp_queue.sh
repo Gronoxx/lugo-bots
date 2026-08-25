@@ -2,7 +2,7 @@
 # Estágio 2 da janela autônoma: COMPÓSITOS (a lição da composição manda validar
 # o pacote junto). comp_a = v3+finish+second_ball; comp_b = comp_a+kickoff.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V3=$(cat ../bot/genome_submit.json)
 CA='{"finish_mode":"on","second_ball":"on"}'

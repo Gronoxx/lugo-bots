@@ -3,7 +3,7 @@
 # só fazem sentido juntos) + retestes de redesigns. Sparring agora com press
 # de 4 (fidelidade ao BotAdversario1). Logs em results/screen/<tag>.log.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 mkdir -p ../results/screen
 

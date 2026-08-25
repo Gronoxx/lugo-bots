@@ -4,7 +4,7 @@
 # Logs em results/screen/<tag>.log. Cada experimento: 6 reps x 2 lados x 2
 # braços = 24 partidas.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 mkdir -p ../results/screen
 

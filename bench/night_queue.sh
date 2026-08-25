@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Travas do PKT-1 (finish_mode) + fila noturna P2→P3→P4.
 set -u
-PY=<caminho local>
+PY=${PY:-$HOME/lugo-bots/.venv/bin/python}
 cd "$(dirname "$0")"
 V3=$(cat ../bot/genome_submit.json)
 mkdir -p ../results/screen
