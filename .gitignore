@@ -8,7 +8,7 @@ bench/recordings/
 *.json.gz
 
 # repos oficiais clonados — recriáveis, pesados
-upstream/
+/upstream/
 
 # artefatos de execução
 bench/dc_*.yml

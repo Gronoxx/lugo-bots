@@ -234,11 +234,15 @@ fraqueza estrutural do baseline (todos atrás da bola). Resultado imediato: 3 vi
 em 3 contra `the-dummies`, 13 gols a 0, dominando território dos dois lados.
 
 Aqui nasce também o `geometry.kick_to`: a `make_order_kick` da `lugo4py` **mira
-torto**, ela compensa a velocidade da bola subtraindo um vetor normalizado para
-magnitude 100 enquanto a bola anda até 400. Medido em 300 cenários: erro mediano de
-**19,2°** (p90 60,6°). Nossa versão resolve a física ao contrário e busca o melhor
-chute *alcançável*: mediana **1,3°**, em 0,28 ms. Como o defeito está na biblioteca,
-**todo bot Python da competição o tem**.
+torto**, ela subtrai um vetor de *direção* de magnitude 100 de um vetor de
+*deslocamento* medido em unidades de campo. Duas consequências, medidas com a API da
+própria biblioteca e reproduzíveis sem o nosso código (ver
+`results/UPSTREAM_TRIAGEM.md`): a direção devolvida **depende da distância do alvo**,
+o mesmo alvo sobre a reta de 45° dá 57,16° a 400 de distância e 45,34° a 12000, e
+**ignora a velocidade da bola**, o ângulo não muda entre `speed` 0 e 400, que é
+justamente o que a compensação existiria para corrigir. Nossa versão resolve a física
+ao contrário e busca o melhor chute *alcançável*, em 0,28 ms. Como o mesmo cálculo
+está no cliente Go, **todo bot da competição o tem**.
 
 ### Fase 1: Evolução automática: o primeiro "não"
 
@@ -651,7 +655,8 @@ Cada item aqui custou tempo real. Estão documentados para não se repetirem.
 6. **`depends_on` não espera o servidor aceitar conexões.** O cliente `lugo4py` tem
    timeout fixo de 5 s sem retry, sem espera ativa pela porta, parte do time não
    conecta e a partida é perdida.
-7. **`make_order_kick` mira torto** (19,2° de erro mediano): ver Fase 0.
+7. **`make_order_kick` mira torto**, a direção depende da distância do alvo e
+   ignora a velocidade da bola: ver Fase 0 e `results/UPSTREAM_TRIAGEM.md`.
 8. **A porta 5000 é ocupada pelo AirPlay no macOS**, e o erro resultante é enganoso.
 
 ### Laboratório
