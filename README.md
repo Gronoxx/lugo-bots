@@ -12,6 +12,14 @@ more interesting than the score: it was not beaten by better opponents. It was r
 tiebreak, and the tiebreak punished precisely the thing the measuring bench had been optimising
 in the wrong direction for two weeks.
 
+> **A note on names.** Bots written by other entrants appear throughout under fictitious names
+> (`BotAdversario1`…`BotAdversario14`, `Participante1`…), consistently numbered across every
+> document. Their source code is not redistributed here — see
+> [`rivals/README.md`](rivals/README.md). Scores and statistics are real; the platform's match
+> identifiers were replaced with labels, because each one opens a public match page that would
+> undo the anonymisation. The official opponents (`level-0`…`level-3`) are platform-provided
+> and named as they are.
+
 ## How the tournament works, because it explains everything
 
 The first phase is not a group stage. Entrants are challenged by three official bots, and
@@ -68,7 +76,7 @@ stuck in "On tests" on the platform during the decisive hours.
 ## Architecture: the bot as a genome
 
 `lugo4py` calls one callback per state, and the whole bot lives in five functions in
-`bot/src/my_bot.py`, around 2000 lines: `on_holding`, `on_supporting`, `on_defending`,
+`bot/src/my_bot.py`, 2,404 lines: `on_holding`, `on_supporting`, `on_defending`,
 `on_disputing` and `as_goalkeeper`. Supporting modules cover geometry and interception,
 dynamic formation and roles, set plays, a non-greedy passing planner, ball carrying and
 finishing.
@@ -86,6 +94,10 @@ BOUNDS = {"dangerous_shot_range": (2000.0, 8000.0), ...}                  # lega
 Every new behaviour is born switched off. A change only reaches the tournament version if a
 measurement turns it on, which means the repository can answer, for any behaviour, when it was
 enabled and on what evidence.
+
+`params.py` holds **241 parameters** — 172 continuous and 69 structural, each with its legal
+range. A published version is a small subset of them: the most aggressive one shipped, `v14`,
+turns on 36. The 17 `bot/genome_*.json` files are the versions that actually played.
 
 ## The bench
 
@@ -109,6 +121,41 @@ that opponent. Measuring against yourself, with only the genes changed, isolates
 the opponent, and it was the only instrument that survived the whole project without being
 recalibrated.
 
+### The noise floor, and what it costs to see through it
+
+The single number that governed every decision here is how loud the environment is. The **same
+genome**, measured five separate times at 16 matches each, scored 4.44, 3.88, 3.12, 3.81 and
+2.94 goals per match — a spread of **±0.75 goals with nothing changed at all**. For a stretch of
+this project every experiment being run was below that floor, which is another way of saying they
+were measuring nothing.
+
+Three consequences ran through the rest of the work:
+
+- **Self-play cuts the variance.** Same image on both sides, only the genes differ. Standard
+  error ≈ **0.17 goals at n=20**, against ~0.9 for the same comparison over a fixed opponent.
+  It is what made verdicts like *status +0.28 (z=2.91, n=40)* and *planner −2.65 (z=−8.32)*
+  readable at all.
+- **State the detectable difference before running.** `compare.sh` prints it: at 8 matches per
+  arm the test only sees differences above ~2.7 goals. An early version was declared
+  "inconclusive" by a test that had **17% power** — the experiment never could have answered the
+  question.
+- **The winner's curse is the default, not the exception.** The genetic algorithm's champion led
+  at +1.42 goals in the fast search mode and regressed to **+0.38** when revalidated in the
+  platform's own timing mode, against +0.88 for the incumbent it was supposed to beat. Every
+  search result was re-measured before being believed.
+
+### The gates every commit had to pass
+
+| Gate | What it enforces |
+|---|---|
+| `bench/test_edge_cases.py` | 140 boundary states; no callback may raise. The `lugo4py` template wraps the callback in `try/except`, so an exception is not a crash — it is a **silently frozen bot** |
+| `bench/decide_dump.py` | replays every snapshot through the real decision function under two `PYTHONPATH`s and diffs. With the new gene off, the diff must be empty — 5,999 turns identical, 926 decisions byte-for-byte |
+| `bench/latency.py` | 50 ms per turn is the server budget. Worst case measured with every gene on: **2.7 ms** |
+| prove it fires | added after two genes were measured as "neutral" while never executing: one was missing from the loader's dictionary, which **ignores unknown keys in silence**; the other was overridden downstream, and tracing the real decision showed the player moving 87 units *backwards* with the gene on |
+
+That fourth gate is the one worth keeping: **"neutral" and "never ran" produce exactly the same
+number.**
+
 ## Empirical laws the project found
 
 Rules discovered along the way and then used as filters. Each one cost matches.
@@ -123,6 +170,73 @@ attack when switched on together: goals fell from 1.81 to 0.94, shots from 4.88 
 conceded reached a "perfect" 0.06. Classic starvation. The bot became excellent at not losing and
 incapable of winning. Only a bisection found it, and the lesson is that approving changes
 individually says nothing about approving them jointly.
+
+## The simulators
+
+Matches run in Docker, 23 containers each, at roughly one match per minute in the fast mode and
+six in the platform's own timing. That is too slow to learn anything from, so `sim/fastsim.py`
+reimplements the **server** — not the bot — in NumPy, and `rl/jax/step.py` vectorises the same
+physics.
+
+Fidelity was treated as the deliverable, not a detail. The original ball model predicted the next
+position from the current velocity and drifted **5.0 units per turn**; reading the trajectories
+back showed the server integrates trapezoidally (`v − decel/2`), which brought the error down to
+**0.38 units**, and the whole simulator to a median of ~0.4 units per turn against real replays.
+Fixing it improved interception, passing and defending at once, because all three were built on
+the same wrong prediction. The JAX rewrite is checked against the scalar one and agrees to
+**0.00 units over 40 turns**; batched at 4096 environments on a GTX 1660 SUPER it runs
+**45 M env-steps/s**, about 7,500 full matches per second.
+
+The other simulator is stranger and more useful. Platform matches ship as **video only**, no
+replay file — so `sim/scene_extract.py` recovers the 22 player positions and the ball from the
+MP4 by computer vision, and `scene_runner.py` drops the live bot into that reconstructed state.
+Thirteen conceded goals were rebuilt this way and turned into a pass/fail suite: the candidate
+had to survive all of them. It went from 42/55 to **130/130**.
+
+## Reinforcement learning track
+
+`rl/` holds the full stack: the bridge that runs the real bot inside the fast simulator, CTDE
+observations (109 egocentric dims, 96 global), a `MultiDiscrete` action space, and MAPPO with a
+shared actor and a central critic in JAX.
+
+It never beat the heuristic, and **the four bugs it took to find that out are the most
+transferable thing in this repository**. All four produced the same symptom — 0% possession, no
+goals — and each one masked the next:
+
+1. **Potential-based shaping is invariant by construction.** With reward entirely of the form
+   `γΦ' − Φ`, the advantage is ≈ 0: the critic happily learns `V ≈ −Φ` and *looks* like it is
+   training, while the actor receives noise. Ng's theorem is exactly why it cannot teach anything.
+2. **Uniform exploration destroys the very skill being learned.** The shoot head has 17 options,
+   so a random ball carrier shoots on **~94% of turns** and loses the ball the turn it gets it.
+   "Hold the ball" is not discoverable by chance. Fixed with an initialisation prior, not more
+   samples.
+3. **The reward was farmable by standing still.** Rewarding ball advance unconditionally makes
+   the optimal policy push the ball forward once and collect. The diagnostic was unambiguous:
+   possession **0.04%**, the agent parked 1,550 units from the ball, the ball stationary 80% of
+   the time. The fix was to make shaping effort-based and conditional on possession.
+4. **A measurement bug hid the first three.** Evaluation read the final score *after* the
+   environment's auto-reset, which zeroes it — so every run reported 0×0 regardless of what the
+   policy did. Counting goals by event during the rollout was the actual fix.
+
+With those closed, possession climbed monotonically from 1% to **73%**. The track was then **shelved on a
+structural argument, not on frustration**: the heuristic bot is a Python object over `lugo4py`
+and cannot run inside a vmapped JAX batch, behaviour cloning of it fails on distribution shift,
+and the strongest JAX-native opponent that could be built loses to it 0–12. So self-play had a
+ceiling below the incumbent *by construction* — measured at 0–8.
+
+`results/RL_MOTHBALL_CONDICOES.md` records **two objective conditions for reopening it**: port
+the scalar simulator's fidelity fixes into the JAX step and pass the cross-check, and get a
+faithful strong opponent into the JAX loop. Nothing was deleted, nothing runs, and the criteria
+are written down rather than remembered.
+
+## Contributing upstream
+
+Working this close to `lugo4py` surfaced a long list of oddities. Rather than reporting the list,
+each one was tested against the library's own API: ~13 candidates, **11 discarded** as our
+misreading or as behaviour that was actually correct, **2 confirmed and turned into patches** —
+including a constant defined as `PLAYER_SIZE * 2.3,` whose trailing comma silently makes it a
+tuple, so any arithmetic on it raises. The triage, including the discarded ones and why, is in
+[`results/UPSTREAM_TRIAGEM.md`](results/UPSTREAM_TRIAGEM.md).
 
 ## What I would do differently
 
@@ -159,33 +273,39 @@ The bet itself was defensible. What went wrong was upstream of it: by the time t
 be made, there was no budget left to reduce the uncertainty. Both final versions then sat stuck in
 platform testing during the decisive hours, so the aggressive option never even played.
 
-## Reinforcement learning track
-
-`rl/` holds a track with custom environments, evaluation harness and a JAX implementation. It was
-shelved deliberately rather than abandoned: with a measurement stick this noisy, a learned policy
-could not be told apart from luck, and fixing the instrument came first. The reasoning is recorded
-in the Portuguese write-up.
-
 ## Running it
 
 Requires Docker. A full match spins up 23 containers.
 
 ```bash
-bench/run_match.sh                       # one match with replay
-python3 bench/escada.py --reps 10        # offensive ceiling over N matches
-python3 bench/ab_selfplay.py --arm-a ... # A/B against ourselves
+bench/run_match.sh                        # one match with replay
+python3 bench/escada.py --reps 16         # offensive ceiling over N matches
+python3 bench/ab_selfplay.py --arm-a ...  # A/B against ourselves, the strong stick
+```
+
+The three gates, which every commit had to pass:
+
+```bash
+python3 bench/test_edge_cases.py          # 140 boundary states, no callback may raise
+python3 bench/decide_dump.py <replay>     # decisions must be byte-identical with the gene off
+python3 bench/latency.py                  # 50 ms/turn budget
 ```
 
 ## Layout
 
-`bot/` holds the bot and its genomes, `bench/` the measurement tools, `sim/` the fast simulator and
-scene reconstruction, `analysis/` independent analysis scripts, `rivals/` the opponent panel,
-`rl/` the reinforcement learning track, and `results/` the reports, including the upstream
-contribution triage in `results/UPSTREAM_TRIAGEM.md`.
+| Directory | Contents |
+|---|---|
+| `bot/` | the bot, its five decision functions, and the 17 genomes that played |
+| `bench/` | the measurement bench: match runners, A/B harnesses, the genetic algorithm, the gates |
+| `sim/` | the fast simulator, its fidelity regression, and scene reconstruction from match video |
+| `rl/` | the reinforcement learning track — bridge, JAX environment, MAPPO, evaluation |
+| `analysis/` | replay parsing, physics measurement, and platform scraping |
+| `results/` | every report, phase by phase, including the post-mortems and the upstream triage |
+| `rivals/` | how to rebuild the opponent panel; third-party code is deliberately not included |
 
-The Portuguese version carries the full account: the phase-by-phase trajectory, the competitive
-strategy, the opponent analysis, the server and laboratory pitfalls that cost real time, and what
-I would do differently.
+[`README.pt-BR.md`](README.pt-BR.md) carries the full account in Portuguese, several times
+longer: the phase-by-phase trajectory with the numbers behind each decision, the competitive
+strategy, the opponent analysis, and the server and laboratory pitfalls that cost real time.
 
 ## Credits
 

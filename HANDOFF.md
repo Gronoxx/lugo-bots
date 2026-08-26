@@ -27,7 +27,8 @@ Há bastante tempo de melhoria DEPOIS da inscrição.
 
 ## Estado: `mybot:v9` é a melhor versão verificada
 
-**20 vitórias em 20 partidas** contra o painel completo, 1 gol sofrido no total:
+**20 vitórias em 20 partidas** contra o painel completo, 4 gols sofridos no total
+(0,20 por jogo — conferido em `bench/results/panel_v9.csv`):
 
 | adversário | gols pró | contra |
 |---|---|---|

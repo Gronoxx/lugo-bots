@@ -18,8 +18,12 @@ de engenharia, perdeu por medir a coisa errada durante duas semanas.**
 > `BotAdversario1`, `BotAdversario2`, … e os autores de bots públicos como
 > `Participante1`, …, **os nomes reais foram substituídos** para não expor
 > participantes da competição. A numeração é consistente em todos os documentos:
-> `BotAdversario1` é sempre o mesmo bot. Placares, estatísticas e identificadores de
-> partida são reais, só os nomes mudaram.
+> `BotAdversario1` é sempre o mesmo bot. Placares e estatísticas são reais; os
+> identificadores de partida da plataforma foram trocados por rótulos (`partida-NN`),
+> porque cada um deles abre a página pública do jogo e desfaria a anonimização.
+> O código dos adversários **não** é redistribuído aqui — ver
+> [`rivals/README.md`](rivals/README.md).
+
 ## Índice
 
 1. [Resultado final](#1-resultado-final)
