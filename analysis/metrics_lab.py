@@ -12,8 +12,7 @@ import os
 import sys
 import numpy as np
 
-CACHE = ("<cache local>"
-         "REDACTED/scratchpad/cache")
+CACHE = "<cache local>/cache"
 
 FIELD_X, FIELD_Y = 20000.0, 10000.0
 GOAL_LO, GOAL_HI = 3500.0, 6500.0

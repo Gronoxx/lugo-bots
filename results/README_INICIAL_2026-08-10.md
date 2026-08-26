@@ -128,7 +128,7 @@ Bots públicos de participantes analisados (`rivals/`):
 |---|---|
 | `Participante1/lugo-bot` | mais avançado: distância ponto-segmento para linha de passe, cálculo de rebote, formações por fase (extreme defensive → normal) |
 | `Participante2/BotParticipante2`, `Participante3/bot` | heurístico simples, derivado do template |
-| `Participante5/ferramenta-de-formacoes` | ferramenta de formações (não é bot) — útil como referência |
+| `Participante5/<ferramenta de formações>` | ferramenta de formações (não é bot) — útil como referência |
 
 **Conclusão: ninguém usa aprendizado.** O teto atual é heurística bem feita.
 Um bot com física correta e otimização automatizada tem margem real.

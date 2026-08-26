@@ -44,3 +44,14 @@ id_ed25519*
 credentials*
 *_secret*
 *.kdbx
+
+# backups de edicao
+*.bak
+*.orig
+
+# clones/ e rivals/: nunca versionar codigo de terceiro (ver rivals/README.md)
+clones/*/
+!clones/muralha_vertical/
+
+# CSVs gerados por bench/pull_matches.py: nomeados pelo handle da plataforma
+results/*_matches.csv

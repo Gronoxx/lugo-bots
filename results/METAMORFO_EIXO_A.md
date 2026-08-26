@@ -11,11 +11,11 @@ DESCARTADA das conclusões.**
 
 | jogo | mid | gols (t) |
 |---|---|---|
-| BotAdversario4 10×0 L3 | 93d4c064 | 13, 111, 131, 150, 171, 197, 228, 280, 311, 375 |
-| BotAdversario10 10×0 L3 (away) | 225a6722 | 26, 63, 80, 116, 137, 155, 191, 215, 268, 288 |
-| BotAdversario13 10×0 L3 (away) | 76949afd | 47, 63, 91, 137, 153, 184, 276, 292, 314, 330 |
-| BotAdversario2 7×0 L3 | 7c531e81 | **11**, 75, 111, 202, 251, 272, 295 |
-| BotAdversario14 3×0 L3 | 655a4e4a | 16, 166, 305 |
+| BotAdversario4 10×0 L3 | partida-15 | 13, 111, 131, 150, 171, 197, 228, 280, 311, 375 |
+| BotAdversario10 10×0 L3 (away) | partida-16 | 26, 63, 80, 116, 137, 155, 191, 215, 268, 288 |
+| BotAdversario13 10×0 L3 (away) | partida-17 | 47, 63, 91, 137, 153, 184, 276, 292, 314, 330 |
+| BotAdversario2 7×0 L3 | partida-18 | **11**, 75, 111, 202, 251, 272, 295 |
+| BotAdversario14 3×0 L3 | partida-19 | 16, 166, 305 |
 
 ## Anatomia por bot
 
@@ -106,7 +106,7 @@ nosso histórico de passividade.
 BotAdversario11 6×0 (15 fin/40%, posse líq. 15,7%): perfil transição-direta, consistente com o
 modelo BotAdversario13-lite. BotAdversario6 4×0 (9 fin/44%, 500 passes, posse 77,6%): modelo ecomp-like de
 posse, volume baixo — prova que posse SEM os 4 cirurgiões rápidos gera pouco volume.
-BotAdversario4 0a9ae22d (23 fin/43%, 30 roubadas): reprodutibilidade do modelo-bloco em duas
+BotAdversario4 partida-20 (23 fin/43%, 30 roubadas): reprodutibilidade do modelo-bloco em duas
 partidas. BotAdversario13 5×0 home (19 fin/26%, 33 bolas perdidas!): o isca-e-bote funciona até
 perdendo 33 bolas — confirma que perda na frente é custo aceitável.
 

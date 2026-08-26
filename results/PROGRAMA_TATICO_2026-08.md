@@ -115,7 +115,7 @@ docker push repo.lugobots.ai/killua-zoldyck:v6   # marcar main na plataforma
 ```
 3. **1× level-3** (meta: vitória com conversão >2,3% e MENOS de ~20 chutes doados) e **1× BotAdversario1** (meta: ≥0-0 no tempo normal; na OT estreia o ot_relief).
 4. **REVERTER main p/ v4** (re-marcar :v4) → só promover v6 se os DOIS exames ≥ v4. Depois `cp bot/genome_v4_candidate.json bot/genome_submit.json` para o repo refletir a main.
-**Bancada-patrick** (quota própria): `docker push repo.lugobots.ai/patrick-estrela:v2bench` (v3+gk_track pronto) → 1× BotAdversario1 = evidência do antídoto ao canto-longe.
+**Bancada-patrick** (mesma conta, cota compartilhada): `docker push repo.lugobots.ai/patrick-estrela:v2bench` (v3+gk_track pronto) → 1× BotAdversario1 = evidência do antídoto ao canto-longe.
 
 **PARTIDA OFICIAL vs LEVEL-1 (18/08, mid `partida-25`): 1×0 — PROBLEMA DE SALDO.** Stats:
 **218 passes certos (99,1%) para 2 finalizações**, `campo_adv` 27,6% (posse quase toda no NOSSO
@@ -194,7 +194,7 @@ cenas: `panic_clear` (chutão alimenta a muralha), `press_shadow` (neutro aqui; 
 p/ A/B). Genes novos c10-c11: press_shadow, press_hold_mark, panic_clear (off). Falta: travas
 C1/C2/C3 do pacote-cenas composto com a v7 (lei da passividade: dd+holdmark são defensivos).
 
-**EXAME 2 — AUTÓPSIA (17/08 ~22h, mid `REDACTED`): REPROVOU — v6 0×1 BotAdversario1 no TEMPO NORMAL** (344s, sem OT; pior que o baseline v4 = 0-0+gol de ouro). O gol
+**EXAME 2 — AUTÓPSIA (17/08 ~22h, exame 2): REPROVOU — v6 0×1 BotAdversario1 no TEMPO NORMAL** (344s, sem OT; pior que o baseline v4 = 0-0+gol de ouro). O gol
 saiu a **19s do fim**: condução do BotAdversario1 no meio sob pressão de 3-4 nossos → passe nas costas
 dos pressers (modo-de-perder nº2) → penetração → ~4s de caos na nossa pequena área → gol.
 Ataque: **1 finalização nossa em 344s** (inanição vs bloco de 9-10; hybrid não solta de longe).
@@ -204,7 +204,7 @@ suporte).** Lições: (a) a 19s do fim, gs_retain_late+gs_draw_ok (OFF na v6) pr
 (b) plano-OT (ot_press+ot_relief) segue válido — falta CHEGAR à OT; (c) nova esteira anti-BotAdversario1
 = CENAS SIMULADAS (reconstruir os gols sofridos e validar variantes localmente antes da quota).
 
-**EXAME 1 — AUTÓPSIA (17/08 17:58 local, mid `REDACTED`): PASSOU COM FOLGA.**
+**EXAME 1 — AUTÓPSIA (17/08 17:58 local, exame 1): PASSOU COM FOLGA.**
 v6 × level-3 **3-0** no tempo normal (vídeo 361s, sem OT). Todas as 3 metas batidas:
 
 | métrica | v4×L3 (partida-07) | v6×L3 (partida-04) |

@@ -15,8 +15,7 @@ import pickle
 import sys
 from collections import Counter, defaultdict
 
-S = ("<cache local>"
-     "REDACTED/scratchpad/")
+S = "<cache local>/"
 
 FILES = ["dummies_vs_dummies", "t1", "eval_0_norm", "var_1", "var_2",
          "swap", "v6_check", "smoke_rival", "p_rival_p2_home_1"]

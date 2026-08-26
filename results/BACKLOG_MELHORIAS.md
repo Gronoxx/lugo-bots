@@ -34,7 +34,7 @@
 
 | O quê | Como |
 |---|---|
-| **Bancada-patrick** (2º bot, quota própria) | subir patrick com genes defensivos rejeitados-no-espelho (gk_track; camper_shadow) e desafiar BotAdversario1 REAL — o sparring-espelho não julga bem genes defensivos (4 falsos-vereditos possíveis) |
+| **Bancada-patrick** (2º bot, mesma conta e cota) | subir patrick com genes defensivos rejeitados-no-espelho (gk_track; camper_shadow) e desafiar BotAdversario1 REAL — o sparring-espelho não julga bem genes defensivos (4 falsos-vereditos possíveis) |
 | **v4×BotAdversario1 e v4k×BotAdversario9** | os 2 testes pendentes da quota de hoje (prioridades 1-2) |
 | **v4s×level-3** | o teste da margem no desempate nº 1 (44 chutes/1 gol da v4 pede gate seletivo) |
 | **level-2** | NUNCA medido em lugar nenhum — 1 jogo de quota |

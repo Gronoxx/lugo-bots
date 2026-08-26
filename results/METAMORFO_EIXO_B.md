@@ -3,7 +3,7 @@
 Forense do matchup BotAdversario1: como sobreviver a ele e como furá-lo. Fontes: vídeo completo de
 BotAdversario12 1×1 BotAdversario1 (`partida-21`, **17/08 17:10 UTC — BotAdversario1 NOVO, o mesmo do nosso exame 2**),
 defesa do BotAdversario1 10×0 L3 (`partida-27`), amostras de partida-11/partida-22 (6×0 home, 13/07 e 09/07) e
-a60c3be1 (0×10 away, 09/07), stats da tabela mestra (`scratchpad/metamorfo_stats.csv`).
+partida-23 (0×10 away, 09/07), stats da tabela mestra (`scratchpad/metamorfo_stats.csv`).
 Complementa o núcleo (kickoff-press do BotAdversario1 antigo; BotAdversario2 5×0 = saída imune + re-roubo).
 
 ## 1. O jogo BotAdversario12 1×1 BotAdversario1 (a peça central — BotAdversario1 ATUAL)

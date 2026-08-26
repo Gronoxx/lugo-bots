@@ -11,9 +11,8 @@ diretório só como registro do caminho descartado.
 (a #33 é dele, inteira em português). O código e os comentários não são tocados
 pelo patch — ele só remove um caractere.
 
-Pré-requisito: `gh auth login` (o `~/.config/gh/hosts.yml` está vazio; o
-`git push` do nosso repo funciona por um token no `~/.git-credentials`, que o
-`gh` não lê).
+Pré-requisito: `gh auth login` — o `gh` mantém a própria credencial, separada
+da que o `git push` deste repositório usa.
 
 ```bash
 gh auth login                      # uma vez, interativo

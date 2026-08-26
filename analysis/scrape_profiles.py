@@ -36,7 +36,7 @@ UA = "Mozilla/5.0 (compatible; lugo-analysis/1.0)"
 DEFAULT_LEVELS = ["level-0", "level-1", "level-2", "level-3"]
 
 # Rótulos da tabela `statistics-table` da página /matches/<id>/watch → chave.
-# (12 stats por partida; validado contra a partida partida-01 = 0-3 vs BotAdversario1.)
+# (12 stats por partida; validado contra a partida-01 = 0-3 vs BotAdversario1.)
 STAT_KEYS = {
     "Ball Gross Possession": "poss_bruta",
     "Ball Net Possession": "poss_liquida",

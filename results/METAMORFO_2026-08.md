@@ -189,7 +189,7 @@ homem; posse estéril; bunker passivo (empata, não vence); tirar corpo do jogo 
 | 8 | `quina_entry` | of. | com área povoada, portador ataca linha de fundo/quina; passe atrasado se fechar | BotAdversario10 (62%); nosso g1 da v6 | conversão |
 | 9 | `mid_deny` | def. | na média central: fechar LINHA DE CHUTE em vez de recuar | bloco do BotAdversario12 tirou o canto-longe do BotAdversario1 | anti canto-longe |
 | 10 | `shot_clock_patience` | of. | segurar penetração até ~5 no shot clock sem janela | BotAdversario10 | OPCIONAL — parente da inanição v5; só com trava anti-estéril |
-| — | `gk_track` | GK | JÁ PRONTO (patrick-bench): GK rastreia a linha, não a bola | antídoto canto-longe | validar vs BotAdversario1 real (quota patrick) |
+| — | `gk_track` | GK | JÁ PRONTO (patrick-bench): GK rastreia a linha, não a bola | antídoto canto-longe | validar vs BotAdversario1 real (cota compartilhada) |
 | — | `high_block` dosado | of. | 6–7 no campo adv. com posse no terço final (3 atrás) | cerco BotAdversario2 | potencializa 3/5; validar ga no C3 |
 
 Fusões aplicadas: kickoff_press(núcleo)=`kickoff_ring`; outlet_press_resist(núcleo)=
@@ -206,7 +206,7 @@ proposto independentemente por núcleo e Eixo A (convergência = confiança).
    ~+10 pelo mercy). Primeiro pacote a implementar.
 3. **Pacote-BotAdversario1 (mata-mata):** genes 4+5+6 (+9 e gk_track). Antes de reencontrá-lo com chave
    em jogo.
-4. **Bancada patrick:** validar gk_track vs BotAdversario1 real (quota própria do patrick).
+4. **Bancada patrick:** validar gk_track vs BotAdversario1 real (usando a cota compartilhada).
 5. **Vigiar o BotAdversario2:** evolui AGORA (0×0→5×0 no BotAdversario1 em 2 dias); re-scrape antes de cada dia
    de torneio; é a régua do teto e provável final.
 6. **Nota de método:** `campo_adv` tem semântica dúbia entre jogos (Eixo A descartou; Eixo B

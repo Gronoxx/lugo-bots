@@ -11,7 +11,7 @@ pequeno FORA de qualquer círculo branco. Ressalva honesta: o rastreio da bola *
 instante em que ela cruza a linha** (último ponto válido = ponto de ENTRADA no gol) e a origem
 do chute é aproximada pela posição da bola 0,2–0,3 s antes. Distâncias têm erro ~±150.
 
-## 1. BotAdversario6 10×0 level-2 (`REDACTED`)
+## 1. BotAdversario6 10×0 level-2 (partida A)
 
 Gols detectados por mudança do dígito do placar em t = 15, 62, 92, 143, 159, 186, 222, 273,
 313, 345 s.
@@ -46,7 +46,7 @@ bola em bando** — nos frames pré-gol aparecem 9–12 jogadores dele amontoado
 Isso deixa os flancos e a linha de fundo VAZIOS, e é por ali que o BotAdversario6 entra. Ele não
 "fura o bloco": ele contorna o bando.
 
-## 2. BotAdversario1 10×0 level-3 (`REDACTED`) — modelo diferente, MESMA geometria
+## 2. BotAdversario1 10×0 level-3 (partida B) — modelo diferente, MESMA geometria
 
 Gols em t = 14, 28, 43, 124, 148, 164, 215, 232, 249, 265 s (note os **três primeiros em 43 s**
 — a cascata de predação de kickoff já descrita em METAMORFO §3). O rastreio automático da bola
