@@ -1,0 +1,12 @@
+diff --git a/src/lugo4py/src/game_snapshot_inspector.py b/src/lugo4py/src/game_snapshot_inspector.py
+index e9ccb3e..07b961a 100644
+--- a/src/lugo4py/src/game_snapshot_inspector.py
++++ b/src/lugo4py/src/game_snapshot_inspector.py
+@@ -120,6 +120,7 @@ class GameSnapshotInspector:
+         order.catch.SetInParent()
+         return order
+ 
++    @staticmethod
+     def get_orientation_by_direction(direction: DIRECTION, my_side: lugo.TeamSide):
+         if direction == DIRECTION.FORWARD:
+             return ORIENTATION.EAST if my_side == lugo.TeamSide.HOME else ORIENTATION.WEST

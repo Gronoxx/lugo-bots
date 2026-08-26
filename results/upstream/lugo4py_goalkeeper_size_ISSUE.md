@@ -1,3 +1,6 @@
+> **OBSOLETO** — decidido em 26/08/2026 abrir apenas o PR, sem issue separada.
+> Mantido só como registro do caminho descartado. Ver `COMO_DISPARAR.md`.
+
 `GOALKEEPER_SIZE` is a tuple, not a number, because of a trailing comma in
 `src/lugo4py/src/specs.py`. Any arithmetic on it raises `TypeError`:
 
