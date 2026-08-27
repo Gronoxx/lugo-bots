@@ -55,3 +55,7 @@ clones/*/
 
 # CSVs gerados por bench/pull_matches.py: nomeados pelo handle da plataforma
 results/*_matches.csv
+
+# bancada: bot/tmp/ e derivado (radical_queue.sh gera, os demais leem).
+# Os arquivos ja versionados ficam, para o painel continuar reproduzivel.
+bot/tmp/
