@@ -2,6 +2,8 @@
 
 # Lugo Bots: `killua-zoldyck`
 
+**Update, October 2026:** after the qualifying elimination described below, the bot qualified for the final through a later round and finished as **runner-up** of the 4th Lugo Bots Open Championship, with the final on October 15, 2026.
+
 A multi-agent robot football bot written in Python on top of `lugo4py`, built for the 4th Lugo Bots
 Open Championship, from August to October 2026. This repository holds the bot, the measurement
 bench, the simulators, the opponent analysis, and above all an honest record of what worked, what

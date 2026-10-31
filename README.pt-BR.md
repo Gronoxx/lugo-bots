@@ -2,6 +2,8 @@
 
 # Lugo Bots: `killua-zoldyck`
 
+**Atualização, outubro de 2026:** depois da eliminação na classificação descrita abaixo, o bot se classificou para a final numa fase posterior e terminou como **vice-campeão** do 4º Campeonato Aberto de Lugo Bots, com a final em 15 de outubro de 2026.
+
 Bot de futebol de robôs para o **4º Campeonato Aberto de Lugo Bots** (ago–out/2026),
 escrito em Python sobre `lugo4py`. Este repositório guarda o bot, a bancada de
 medição, os simuladores, a análise dos adversários e, principalmente, **o registro
